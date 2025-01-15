@@ -1,0 +1,89 @@
+#!/home/tell/venv/bin/python3
+# -*- coding: utf-8 -*-
+
+
+
+import time
+import subprocess
+import os
+import re
+from perlish import *
+# import paho.mqtt.client as mqtt
+import sgtmqtt
+
+mqhost="localhost"
+
+mq = None
+
+# some of these are inspired by
+# Shell scripts for system monitoring from here:
+# https://unix.stackexchange.com/questions/119126/command-to-display-memory-usage-disk-usage-and-cpu-load
+
+def get_ip():
+    cmd = "hostname -I";
+    ipstr = subprocess.check_output(cmd, shell=True).decode("utf-8")
+    return ipstr.rstrip("\r\n")
+
+def get_cpu_load():
+    #top -bn1 | grep load | awk '{printf \"CPU Load: %.2f\", $(NF-2)}'"
+    cmd = "uptime"
+    upstr = subprocess.check_output(cmd, shell=True).decode("utf-8")
+    m = re.search(r"load average:\s+([0-9.]+)", upstr)
+    if(m):
+        cpu = float(m.group(1))
+        return cpu
+    else:
+        printf("get_cpu_load fail \"%s\"\n", upstr)
+        exit(1)
+        return None
+
+def get_cpu_temp():
+    fn = "/sys/class/thermal/thermal_zone0/temp"
+    f = open(fn, "r");
+    s = f.readline(); # .decode("utf-8")
+    f.close()
+    rawtemp = float(s)
+    return rawtemp/1000.0
+
+def get_temp_hum():
+    cmd = "sensors shtc1-i2c-1-70"
+    f = os.popen(cmd, "r");
+    temp = None
+    hum = None
+    for line in f:
+        #printf("th_line: %s\n", line.rstrip("\r\n"))
+        m = re.match(r"temp1:\s*([+0-9.]+)", line)
+        if(m):
+            temp = float(m.group(1))
+        m = re.match(r"humidity1:\s*([+0-9.]+)", line)
+        if(m):
+            hum = float(m.group(1))
+    f.close()
+    return (temp, hum)
+
+
+def periodic():
+    IP = get_ip()
+    CPU = get_cpu_load()
+    cputemp = get_cpu_temp()
+    (temp, hum) = get_temp_hum()
+
+#    cmd = "free -m | awk 'NR==2{printf \"Mem: %s/%s MB  %.2f%%\", $3,$2,$3*100/$2 }'"
+#    MemUsage = subprocess.check_output(cmd, shell=True).decode("utf-8")
+#    cmd = 'df -h | awk \'$NF=="/"{printf "Disk: %d/%d GB  %s", $3,$2,$5}\''
+#    Disk = subprocess.check_output(cmd, shell=True).decode("utf-8")
+
+    printf("IP=%s\n", IP);
+    printf("CPU_Load=%.2f\n", CPU);
+    printf("CPU_Temp=%.1f\n", cputemp);
+    printf("room_Temp=%.1f\n", temp);
+    printf("room_humidity=%.1f\n", hum);
+
+    
+def main():
+    mymq = sgtmqtt.sgtmqtt(mqhost=mqhost)
+    mymq.periodic_callback = periodic
+    mymq.select_loop(5)
+
+    
+main()
