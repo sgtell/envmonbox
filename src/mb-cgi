@@ -1,0 +1,71 @@
+#!/usr/bin/python
+import os
+import sys
+import cgi
+import time
+
+sys.path.append('/home/tell/share/python')
+from perlish import *
+
+log_items = [
+    "cpu_load",
+    "cpu_temp",
+    "room_temp",
+    "room_humidity",
+]
+
+log_dict = dict()
+for item in log_items:
+    log_dict[item] = None
+
+form = cgi.FieldStorage();
+
+for k in form.keys():
+    val = form.getvalue(k)
+    if(k in log_dict):
+        log_dict[k] = val;
+
+dbfp = open("/tmp/mpdata-db", "a");
+fprintf(dbfp, "mbdata at %s\n", time.asctime())
+fprintf(dbfp, "log_dict=%s\n", str(log_dict))
+fprintf(dbfp, "remote ip %s\n", os.getenv('REMOTE_ADDR'))
+
+logfp = open("/tmp/mbdata.dlog.0", "a");
+fprintf(logfp, "%s", time.strftime("%H:%M"))
+for item in log_items:
+    if(log_dict[item] is not None):
+        fprintf(logfp, " %s", log_dict[item])
+    else:
+        fprintf(logfp, " -");
+    fprintf(logfp, "\n");
+    logfp.flush()
+
+dbfp.close()
+logfp.close()
+    
+#################
+
+print("Content-type: text/html")
+print()
+print("""
+<html>
+<head><title>mybdata-test</title></head>
+<body>
+""")
+print("<hr/>\n");
+print("<b>all form values:</b><ul>\n");
+
+for k in form.keys():
+    printf("<li>%s=%s</li>\n", k, form.getvalue(k))
+    
+print("</ul>\n");
+    
+print("<hr/>\n");
+printf("env: %s\n", str(os.environ))
+
+print("""
+</body>
+</html>
+""")
+
+
