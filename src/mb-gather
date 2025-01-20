@@ -1,19 +1,15 @@
 #!/home/tell/venv/bin/python3
 # -*- coding: utf-8 -*-
 
-
-
 import time
 import subprocess
 import os
 import re
 from perlish import *
-# import paho.mqtt.client as mqtt
 import sgtmqtt
 
 mqhost="localhost"
-
-mq = None
+mymq = None
 
 # some of these are inspired by
 # Shell scripts for system monitoring from here:
@@ -63,6 +59,7 @@ def get_temp_hum():
 
 
 def periodic():
+    global mymq
     IP = get_ip()
     CPU = get_cpu_load()
     cputemp = get_cpu_temp()
@@ -79,11 +76,16 @@ def periodic():
     printf("room_Temp=%.1f\n", temp);
     printf("room_humidity=%.1f\n", hum);
 
+    mymq.mq.publish("monbox/host_ip", IP);
+    mymq.mq.publish("monbox/cpu_load", CPU);
+    mymq.mq.publish("monbox/cpu_temp", sprintf("%.1f", cputemp))
+    mymq.mq.publish("monbox/room_temp", sprintf("%.1f", temp))
+    mymq.mq.publish("monbox/room_humidity", sprintf("%.1f", hum))
     
 def main():
+    global mymq
     mymq = sgtmqtt.sgtmqtt(mqhost=mqhost)
     mymq.periodic_callback = periodic
-    mymq.select_loop(5)
+    mymq.select_loop(15)	# make this an option, or at least longer after we finish debugging
 
-    
 main()

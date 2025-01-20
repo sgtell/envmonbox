@@ -6,14 +6,16 @@ import argparse
 import subprocess
 import os
 import re
+import requests
 from perlish import *
 import sgtmqtt
 
 mqhost="localhost"
 mymq = None
-minutes_per_update = 2
-fwid="1234"
-baseurl = "http://titania.telltronics.org/cgi-bin/mbdata"
+#minutes_per_update = 4
+minutes_per_update = 0.5
+fwid=1
+baseurl = "http://titania.telltronics.org/cgi-bin/mb-cgi"
 
 topics = [
     # mqtt topic 	            type
@@ -28,8 +30,18 @@ parser.add_argument("--verbose", "-v", default=False, action='store_true');
 args = parser.parse_args();
 
 topicinfo = None
-last_send_minute = None
+messages_seen = 0
+tmnow = time.localtime() 
+last_send_minute = tmnow.tm_min
 
+def get_fwid():
+    fn = "/home/envmonbox/clientid"
+    f = open(fn, "r");
+    s = f.readline(); # .decode("utf-8")  # default?
+    f.close()
+    fwid = int(s)
+    printf("fwid=%d\n", fwid)
+    return fwid
 
 def init_topicinfo():
     global topicinfo
@@ -52,29 +64,28 @@ def on_connect(mq, userdata, flags, rc):
     if(mq):
         mq.subscribe("monbox/#")
 
+
 def on_message(msg):
     global topicinfo
-#    if(args.verbose):
-        #printf("message %s\n", str(msg))
-#        printf(" message topic=\"%s\" payload=%s\n", msg.topic, msg.payload)
-        #    topic = re.split("/", msg.topic)
-#    printf("topic=%s\n", str(topic))
-    handled = False
-#    if(topic[0] == 'aptstage'):
-    if(msg.topic in topicinfo):
-        handled = True
-        topicinfo[msg.topic]['lasttime'] = time.time()
-        ttype = topicinfo[msg.topic]['type']
+    global messages_seen
+    topic = str(msg.topic)
+#    printf("msg topic=\"%s\"\n", topic)
+    
+    if(topic in topicinfo):
+        messages_seen += 1
+        topicinfo[topic]['lasttime'] = time.time()
+        ttype = topicinfo[topic]['type']
         if(ttype == float):
             s = msg.payload.decode('ascii')
-            topicinfo[msg.topic]['last'] = float(s)
+            topicinfo[topic]['last'] = float(s)
         elif(ttype == str):
-             topicinfo[msg.topic]['last'] = msg.payload.decode('ascii')
+             topicinfo[topic]['last'] = msg.payload.decode('ascii')
         elif(ttype == int):
              s = msg.payload.decode('ascii')
-             topicinfo[msg.topic]['last'] = int(s, 0);
+             topicinfo[topic]['last'] = int(s, 0);
         else:
-             topicinfo[msg.topic]['last'] = msg.payload
+             topicinfo[topic]['last'] = msg.payload
+        printf("msg %s topcinfo=%s\n", topic, topicinfo[topic])
 
 def print_current():
     "print current info on all known topics"
@@ -86,38 +97,44 @@ def print_current():
 def fstr_if_not_old(topic, fname):
     global topicinfo
     now = time.time()
-    if(now - topicinfo[topic]['lasttime'] < 150):
-        return sprintf("?%s=%s", fname, str(topicinfo[topic]['last']))
+    lasttime = topicinfo[topic]['lasttime']
+    if(now - lasttime < 150):
+        return sprintf("&%s=%s", fname, str(topicinfo[topic]['last']))
     else:
+        printf(" fstr_if %s too old now=%d lasttime=%d delta=%d\n", fname, now, lasttime, now - lasttime)
         return ""
              
 def periodic():
     global last_send_minute
     tmnow = time.localtime()
-    if(not last_send_minute or
-       tmnow.tm_min < last_send_minute or
-       tmnow.tm_min - last_send_minute > minutes_per_update):
+    printf("periodic_callback now=%d last_send=%d\n", tmnow.tm_min, last_send_minute)
+    if(
+        tmnow.tm_min - last_send_minute > minutes_per_update):
         last_send_minute = tmnow.tm_min
-        url = baseurl + "?id=" + fwid
+        url = baseurl + "?id=" + str(fwid)
         url += fstr_if_not_old("monbox/cpu_load",  "cpu_load")
         url += fstr_if_not_old("monbox/cpu_temp",  "cpu_temp")
         url += fstr_if_not_old("monbox/room_temp",  "room_temp")
         url += fstr_if_not_old("monbox/room_humidity",  "room_humidity")
-        printf("wget %s\n", url);
+        printf("get %s\n", url);
+        r = requests.get(url);
+        printf("request status %s\n", r.status_code)
 
 def nomq_callback():
-    printf("nomq_callback:")
+    printf("nomq_callback:\n")
     print_current()
     pass
 
 def main():
     global mymq
+    global fwid
+    fwid = get_fwid()
     init_topicinfo()
     mymq = sgtmqtt.sgtmqtt(mqhost=mqhost)
     mymq.on_message = on_message
     mymq.mq.on_connect = on_connect
     mymq.periodic_callback = periodic
-    mymq.nomqtt_callback = nomq_callback
+#    mymq.nomqtt_callback = nomq_callback
     mymq.select_loop(5)	
 
 main()
