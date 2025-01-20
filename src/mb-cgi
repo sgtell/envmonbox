@@ -7,6 +7,9 @@ import time
 sys.path.append('/home/tell/share/python')
 from perlish import *
 
+logdir="/home/envmonbox/log"
+idlist="/home/envmonbox/clientid-list"
+
 log_items = [
     "cpu_load",
     "cpu_temp",
@@ -19,28 +22,53 @@ for item in log_items:
     log_dict[item] = None
 
 form = cgi.FieldStorage();
+clientid = form.getvalue('id')
 
+n_logitems = 0
 for k in form.keys():
     val = form.getvalue(k)
     if(k in log_dict):
         log_dict[k] = val;
+        n_logitems += 1
 
-dbfp = open("/tmp/mpdata-db", "a");
-fprintf(dbfp, "mbdata at %s\n", time.asctime())
-fprintf(dbfp, "log_dict=%s\n", str(log_dict))
+dbfp = open(logdir + "/mbdata-db", "a");
+fprintf(dbfp, "--\nmbdata at %s\n", time.asctime())
 fprintf(dbfp, "remote ip %s\n", os.getenv('REMOTE_ADDR'))
+fprintf(dbfp, "form=%s\n", str(form))
+fprintf(dbfp, "%d logitems\n", n_logitems)
+dbfp.flush()
 
-logfp = open("/tmp/mbdata.dlog.0", "a");
+def get_clientid_list(fn):
+    iddict = dict()
+    idfp = open(fn, "r");
+    if(not idfp):
+        fprintf(dbfp, "unable to open %s:\n", fn)
+    for s in idfp:
+        s = chomp(s) # todo remove all whitespace, not just last trailing
+        if(int(s) > 0): # better valid checks
+            iddict[s] = True
+    idfp.close()
+    return iddict
+
+iddict = get_clientid_list(idlist) 
+fprintf(dbfp, "get_clientid_list: %s\n", str(iddict))
+
+if(not iddict.get(clientid, False)):
+    fprintf(dbfp, "id %s not on the list\n", clientid)
+    exit(0)
+
+logfname = sprintf("%s/dlog.%s.0", logdir, clientid);
+        
+logfp = open(logfname, "a");
 fprintf(logfp, "%s", time.strftime("%H:%M"))
 for item in log_items:
     if(log_dict[item] is not None):
         fprintf(logfp, " %s", log_dict[item])
     else:
         fprintf(logfp, " -");
-    fprintf(logfp, "\n");
-    logfp.flush()
+fprintf(logfp, "\n");
+logfp.flush()
 
-dbfp.close()
 logfp.close()
     
 #################
@@ -68,4 +96,6 @@ print("""
 </html>
 """)
 
+fprintf(dbfp, "done!\n");
+dbfp.close()
 
