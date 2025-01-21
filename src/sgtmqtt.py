@@ -119,6 +119,7 @@ if __name__ == "__main__":
         print("Connected with result code "+str(rc))
         if(mq):
             mq.subscribe("monbox/#")
+            mq.subscribe("tele/#")
 
     def on_message(msg):
         topic = str(msg.topic)
@@ -127,7 +128,7 @@ if __name__ == "__main__":
     
     def periodic():
         tmnow = time.localtime()
-        printf("periodic_callback now=%02d:%02d\n", tmnow.tm_min, tmnow.tm_sec)
+        printf("periodic_callback now=%s\n", time.strftime("%T"));
     
     mqhost="localhost"
     

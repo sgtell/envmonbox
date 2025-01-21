@@ -7,13 +7,18 @@ import subprocess
 import os
 import re
 import requests
+import json
+
 from perlish import *
+
+sys.path.append('/home/envmonbox/lib/python');
 import sgtmqtt
 
 mqhost="localhost"
 mymq = None
 #minutes_per_update = 4
-minutes_per_update = 0.5
+minutes_per_update = 1
+old_data_threshold = 420
 fwid=1
 baseurl = "http://titania.telltronics.org/cgi-bin/mb-cgi"
 
@@ -22,12 +27,14 @@ topics = [
     [ "monbox/cpu_load",  float], 
     [ "monbox/cpu_temp",  float], 
     [ "monbox/room_temp",  float], 
-    [ "monbox/room_humidity",  float], 
+    [ "monbox/room_humidity",  float],
+    [ "tele/tasmota_F99C40/SENSOR",  '18b20_json' ],
 ]
 
 parser =  argparse.ArgumentParser(description="subscribe to several mqtt topics and log their values periodicly");
 parser.add_argument("--verbose", "-v", default=False, action='store_true');
 args = parser.parse_args();
+g_verbose = args.verbose
 
 topicinfo = None
 messages_seen = 0
@@ -40,7 +47,8 @@ def get_fwid():
     s = f.readline(); # .decode("utf-8")  # default?
     f.close()
     fwid = int(s)
-    printf("fwid=%d\n", fwid)
+    if(g_verbose):
+        printf("fwid=%d\n", fwid)
     return fwid
 
 def init_topicinfo():
@@ -63,13 +71,15 @@ def on_connect(mq, userdata, flags, rc):
     # reconnect then subscriptions will be renewed.
     if(mq):
         mq.subscribe("monbox/#")
+        mq.subscribe("tele/#")
 
 
 def on_message(msg):
     global topicinfo
     global messages_seen
     topic = str(msg.topic)
-#    printf("msg topic=\"%s\"\n", topic)
+    if(g_verbose):
+        printf("msg topic=\"%s\"\n", topic)
     
     if(topic in topicinfo):
         messages_seen += 1
@@ -83,9 +93,17 @@ def on_message(msg):
         elif(ttype == int):
              s = msg.payload.decode('ascii')
              topicinfo[topic]['last'] = int(s, 0);
+        elif(ttype == '18b20_json'):
+            data = json.loads( msg.payload.decode('ascii') );
+            tempstr = data['DS18B20']['Temperature'];
+            topicinfo[topic]['last'] = tempstr
         else:
-             topicinfo[topic]['last'] = msg.payload
-        printf("msg %s topcinfo=%s\n", topic, topicinfo[topic])
+            printf("unknown type %s for topic %s; treating as str\n", str(ttype), topic)
+            topicinfo[topic]['last'] = msg.payload.decode('ascii')
+        if(g_verbose):             
+            printf("msg %s topicinfo=%s\n", topic, topicinfo[topic])
+    elif(g_verbose):
+        printf("ignoring unknown topic %s\n", topic)
 
 def print_current():
     "print current info on all known topics"
@@ -98,7 +116,7 @@ def fstr_if_not_old(topic, fname):
     global topicinfo
     now = time.time()
     lasttime = topicinfo[topic]['lasttime']
-    if(now - lasttime < 150):
+    if(now - lasttime < old_data_threshold):
         return sprintf("&%s=%s", fname, str(topicinfo[topic]['last']))
     else:
         printf(" fstr_if %s too old now=%d lasttime=%d delta=%d\n", fname, now, lasttime, now - lasttime)
@@ -107,22 +125,29 @@ def fstr_if_not_old(topic, fname):
 def periodic():
     global last_send_minute
     tmnow = time.localtime()
-    printf("periodic_callback now=%d last_send=%d\n", tmnow.tm_min, last_send_minute)
+    if(last_send_minute < tmnow.tm_min):  # handle wraparound
+        last_send_minute = 0;
+    if(g_verbose):
+        printf("periodic_callback now=%d last_send=%d\n", tmnow.tm_min, last_send_minute)
     if(
         tmnow.tm_min - last_send_minute > minutes_per_update):
         last_send_minute = tmnow.tm_min
         url = baseurl + "?id=" + str(fwid)
+        # TODO pull this into a table at the top for ease of config.
         url += fstr_if_not_old("monbox/cpu_load",  "cpu_load")
         url += fstr_if_not_old("monbox/cpu_temp",  "cpu_temp")
         url += fstr_if_not_old("monbox/room_temp",  "room_temp")
         url += fstr_if_not_old("monbox/room_humidity",  "room_humidity")
-        printf("get %s\n", url);
+        url += fstr_if_not_old("tele/tasmota_F99C40/SENSOR",  "outdoor_temp")
+        if(g_verbose):
+            printf("get %s\n", url);
         r = requests.get(url);
         printf("request status %s\n", r.status_code)
 
 def nomq_callback():
     printf("nomq_callback:\n")
-    print_current()
+    if(g_verbose):
+        print_current()
     pass
 
 def main():
