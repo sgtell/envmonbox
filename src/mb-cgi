@@ -15,6 +15,7 @@ log_items = [
     "cpu_temp",
     "room_temp",
     "room_humidity",
+    "outdoor_temp",
 ]
 
 log_dict = dict()
@@ -23,6 +24,7 @@ for item in log_items:
 
 form = cgi.FieldStorage();
 clientid = form.getvalue('id')
+remoteip = os.getenv('REMOTE_ADDR')
 
 n_logitems = 0
 for k in form.keys():
@@ -33,7 +35,7 @@ for k in form.keys():
 
 dbfp = open(logdir + "/mbdata-db", "a");
 fprintf(dbfp, "--\nmbdata at %s\n", time.asctime())
-fprintf(dbfp, "remote ip %s\n", os.getenv('REMOTE_ADDR'))
+fprintf(dbfp, "remote ip %s\n", remoteip)
 fprintf(dbfp, "form=%s\n", str(form))
 fprintf(dbfp, "%d logitems\n", n_logitems)
 dbfp.flush()
