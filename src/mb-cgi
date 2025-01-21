@@ -34,7 +34,7 @@ for k in form.keys():
         n_logitems += 1
 
 dbfp = open(logdir + "/mbdata-db", "a");
-fprintf(dbfp, "--\nmbdata at %s\n", time.asctime())
+fprintf(dbfp, "--\nmbdata at %s\n", time.strftime("%c %z %Z"))
 fprintf(dbfp, "remote ip %s\n", remoteip)
 fprintf(dbfp, "form=%s\n", str(form))
 fprintf(dbfp, "%d logitems\n", n_logitems)
@@ -59,7 +59,9 @@ if(not iddict.get(clientid, False)):
     fprintf(dbfp, "id %s not on the list\n", clientid)
     exit(0)
 
-logfname = sprintf("%s/dlog.%s.0", logdir, clientid);
+timestr = time.strftime("%y%m%d")
+
+logfname = sprintf("%s/dlog.%s.%s", logdir, clientid, timestr);
         
 logfp = open(logfname, "a");
 fprintf(logfp, "%s", time.strftime("%H:%M"))
@@ -67,7 +69,7 @@ for item in log_items:
     if(log_dict[item] is not None):
         fprintf(logfp, " %s", log_dict[item])
     else:
-        fprintf(logfp, " -");
+        fprintf(logfp, " NaN");
 fprintf(logfp, "\n");
 logfp.flush()
 
