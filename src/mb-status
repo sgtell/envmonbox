@@ -4,23 +4,70 @@
 import os
 import sys
 import cgi
+import re
 import time
+import math
 
-import cgitb
-cgitb.enable()
+#import cgitb
+#cgitb.enable(logdir="/tmp")
 
-sys.path.append('/home/tell/venv/lib/python3.11/site-packages/')
-
+sys.path.append('/home/envmonbox/lib/python/')
 from perlish import *
 
 latest_file = "/home/envmonbox/log/latest"
 
+rawstr = ""
+debugstr = ""
+
+
 def post_file(fp):
-        print("<ul>\n")
+        global rawstr
+        global debugstr
+        rawstr += "<ul>\n"
+        valdict = dict()
+        exdict = dict()
+        mstr = ""
         for s in fp:
             s = chomp(s) # todo remove all whitespace, not just last trailing
-            printf("<li>%s\n", s)
-        print("</ul>\n")
+#            m = re.match("\s+([a-zA-Z0-9]+):\s*([.-0-9]+)", s)
+            m = re.search("\s+([a-zA-Z0-9_]+):\s*([-naNA.0-9]+)(.*)$", s)
+            if(m):
+                    mstr += str(m)
+                    logtag = m.group(1)
+                    valstr = m.group(2)
+                    extra = m.group(3)
+                    valdict[logtag] = valstr;
+                    exdict[logtag] = extra;
+            rawstr += "<li>" + s + "\n"
+        rawstr += "</ul>"
+        debugstr += "values:" + str(valdict) + "\n"
+        debugstr += "extras:" + str(exdict)+ "\n"
+        format_fdata(valdict, exdict)
+
+def numfield(s):
+        if(s == '-' or s == ''):
+                return math.nan
+        else:
+                return float(s)
+
+def format_fdata(valdict, exdict):
+        # TODO redo as a table
+        print("<ul>")
+        rt_c = numfield(valdict.get('room_temp', ''))
+        if(rt_c != math.nan):
+                rt_f = rt_c * 1.8 + 32.0
+                printf("<li> Room temperature: %.1f\n", rt_f)
+                
+        hum = numfield(valdict.get('room_humidity', ''))
+        if(hum != math.nan):
+                printf("<li> Room humidity: %.0f%%\n", hum)
+        
+        ot_c = numfield(valdict.get('outdoor_temp', ''))
+        if(ot_c != math.nan):
+                ot_f = ot_c * 1.8 + 32.0
+                printf("<li> Outdoor: %.1f\n", rt_f)
+                
+        print("</ul>")
 
 print("Content-type: text/html")
 print()
@@ -31,13 +78,25 @@ print("""
 """)
 
 try:
-#        fp = open(latest_file, "r")
-#        post_file(fp)
-#        fp.close()
-        print("data would go here\n")
+        fp = open(latest_file, "r")
+        post_file(fp)
+        fp.close()
+        print("<hr/>raw data:<br/>\n")
+        print("<pre>")
+        print(rawstr)
+        print("</pre>")
+        print("<hr/>debug:<br/>\n")
+        print("<pre>")
+        print(debugstr)
+        print("</pre>")
+
         
-except error as e:
-        print("<b>no data</b>\n")
+except OSError as e:
+        print("<b>no data.  error:</b>\n")
+        print("<pre>")
+        print(str(e))
+        print("</pre>")
+        
 
 
 print("""

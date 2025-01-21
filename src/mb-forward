@@ -18,6 +18,7 @@ mqhost="localhost"
 mymq = None
 #minutes_per_update = 4
 minutes_per_update = 1
+seconds_per_update = 180
 old_data_threshold = 900
 fwid=1
 baseurl = "http://titania.telltronics.org/cgi-bin/mb-cgi"
@@ -41,6 +42,7 @@ topicinfo = None
 messages_seen = 0
 tmnow = time.localtime() 
 last_send_minute = tmnow.tm_min
+last_send_time = time.time()
 
 def get_fwid():
     fn = "/home/envmonbox/clientid"
@@ -140,18 +142,8 @@ def log_latest():
                 fprintf(fp, " old_%d", now - lasttime)
             fprintf(fp, "\n");
     fp.close()
-    
-def periodic():
-    global last_send_minute
-    global messages_seen
-    tmnow = time.localtime()
-    if(last_send_minute < tmnow.tm_min):  # handle wraparound
-        last_send_minute = 0;
-    if(g_verbose):
-        printf("periodic_callback now=%d last_send=%d\n", tmnow.tm_min, last_send_minute)
-    if(
-        tmnow.tm_min - last_send_minute > minutes_per_update):
-        last_send_minute = tmnow.tm_min
+
+def forward_web():
         url = baseurl + "?id=" + str(fwid)
         # TODO pull this into a table at the top for ease of config.
         url += fstr_if_not_old("monbox/cpu_load",  "cpu_load")
@@ -163,7 +155,16 @@ def periodic():
             printf("get %s\n", url);
         r = requests.get(url);
         printf("request status %s\n", r.status_code)
-
+    
+    
+def periodic():
+    global last_send_time
+    global messages_seen
+    now = time.time()
+    if(now - last_send_time > seconds_per_update):
+        forward_web()
+        last_send_time = now
+        
     if(messages_seen > 0):
         log_latest()
         messages_seen = 0

@@ -7,14 +7,25 @@
 # -*- coding: utf-8 -*-
 
 import time
+import math
 import subprocess
 import digitalio
 import board
 import os
 import re
+import argparse
 from PIL import Image, ImageDraw, ImageFont
 from adafruit_rgb_display import st7789
 from perlish import *
+
+latest_file = "/home/envmonbox/log/latest"
+
+
+parser =  argparse.ArgumentParser(description="subscribe to several mqtt topics and log their values periodicly");
+parser.add_argument("--verbose", "-v", default=False, action='store_true');
+parser.add_argument("--test", "-t", default=False, action='store_true');
+args = parser.parse_args();
+g_verbose = args.verbose
 
 
 # Configuration for CS and DC pins (these are FeatherWing defaults on M0/M4):
@@ -88,6 +99,30 @@ def get_temp_hum():
     f.close()
     return (temp, hum)
 
+def numfield(s):
+        if(s == '-' or s == ''):
+                return math.nan
+        else:
+                return float(s)
+
+def get_latest():
+    fp = open(latest_file, "r")
+    valdict = dict()
+    exdict = dict()
+    for s in fp:
+        s = chomp(s) # todo remove all whitespace, not just last trailing
+        m = re.search("\s+([a-zA-Z0-9_]+):\s*([-naNA.0-9]+)(.*)$", s)
+        if(m):
+            logtag = m.group(1)
+            valstr = m.group(2)
+            extra = m.group(3)
+            valdict[logtag] = valstr;
+            exdict[logtag] = extra;
+    fp.close()
+    if('outdoor_temp' in valdict):
+        tf = numfield(valdict['outdoor_temp'])
+        valdict['outdoor_temp_f'] = tf * 1.8 + 32.0
+    return valdict
 
 # Create blank image for drawing.
 # Make sure to create image with mode 'RGB' for full color.
@@ -109,7 +144,6 @@ top = padding
 bottom = height - padding
 # Move left to right keeping track of the current x position for drawing shapes.
 x = 0
-
 
 # Alternatively load a TTF font.  Make sure the .ttf font file is in the
 # same directory as the python script!
@@ -146,10 +180,17 @@ while True:
     (temp, hum) = get_temp_hum()
     tempf = temp * 1.8 + 32
     thstr   = sprintf("room    %2.0fF  %2.0f%% H", tempf, hum)
-#    outtstr = sprintf("outside %2.0fF\n", outtempf);
-    outtstr = sprintf("outside ___\n");
+    vals = get_latest()
+    outtstr = sprintf("outside %2.0fF\n", vals['outdoor_temp_f']);
+
+    if(args.test):
+        printf("%s\n", timestr)
+        printf("%s\n", IP)
+        printf("%s\n", cpustr)
+        printf("%s\n", thstr)
+        printf("%s\n", outtstr)
     
-    # Write four lines of text.
+    # Write our lines of text.
     y = top
     bbox = font.getbbox(timestr)
     w = bbox[2] - bbox[0]
@@ -182,4 +223,7 @@ while True:
 
     # Display image.
     disp.image(image, rotation)
+
+    if(args.test):
+               exit(0)
     time.sleep(0.3)
