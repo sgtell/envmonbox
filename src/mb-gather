@@ -5,13 +5,23 @@ import time
 import subprocess
 import os
 import re
+import argparse
 from perlish import *
+
+sys.path.append('/home/envmonbox/lib/python');
 import sgtmqtt
 
+
 mqhost="localhost"
+
+parser =  argparse.ArgumentParser(description="gather environment monitoring data, and publish it to mqtt ");
+parser.add_argument("--verbose", "-v", default=False, action='store_true');
+args = parser.parse_args();
+g_verbose = args.verbose
+
 mymq = None
 
-# some of these are inspired by
+# some of these functions are inspired by
 # Shell scripts for system monitoring from here:
 # https://unix.stackexchange.com/questions/119126/command-to-display-memory-usage-disk-usage-and-cpu-load
 
@@ -70,11 +80,12 @@ def periodic():
 #    cmd = 'df -h | awk \'$NF=="/"{printf "Disk: %d/%d GB  %s", $3,$2,$5}\''
 #    Disk = subprocess.check_output(cmd, shell=True).decode("utf-8")
 
-    printf("IP=%s\n", IP);
-    printf("CPU_Load=%.2f\n", CPU);
-    printf("CPU_Temp=%.1f\n", cputemp);
-    printf("room_Temp=%.1f\n", temp);
-    printf("room_humidity=%.1f\n", hum);
+    if(g_verbose):
+        printf("IP=%s\n", IP);
+        printf("CPU_Load=%.2f\n", CPU);
+        printf("CPU_Temp=%.1f\n", cputemp);
+        printf("room_Temp=%.1f\n", temp);
+        printf("room_humidity=%.1f\n", hum);
 
     mymq.mq.publish("monbox/host_ip", IP);
     mymq.mq.publish("monbox/cpu_load", CPU);
