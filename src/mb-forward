@@ -18,17 +18,18 @@ mqhost="localhost"
 mymq = None
 #minutes_per_update = 4
 minutes_per_update = 1
-old_data_threshold = 420
+old_data_threshold = 900
 fwid=1
 baseurl = "http://titania.telltronics.org/cgi-bin/mb-cgi"
+latest_file = "/home/envmonbox/log/latest"
 
 topics = [
-    # mqtt topic 	            type
-    [ "monbox/cpu_load",  float], 
-    [ "monbox/cpu_temp",  float], 
-    [ "monbox/room_temp",  float], 
-    [ "monbox/room_humidity",  float],
-    [ "tele/tasmota_F99C40/SENSOR",  '18b20_json' ],
+    # mqtt topic 	            type        # forwarding/logging tag
+    [ "monbox/cpu_load",            float,        "cpu_load" ],       
+    [ "monbox/cpu_temp",            float,        "cpu_temp" ],       
+    [ "monbox/room_temp",           float,        "room_temp"],      
+    [ "monbox/room_humidity",       float,        "room_humidity"],  
+    [ "tele/tasmota_F99C40/SENSOR", '18b20_json' ,"outdoor_temp"],  
 ]
 
 parser =  argparse.ArgumentParser(description="subscribe to several mqtt topics and log their values periodicly");
@@ -78,8 +79,8 @@ def on_message(msg):
     global topicinfo
     global messages_seen
     topic = str(msg.topic)
-    if(g_verbose):
-        printf("msg topic=\"%s\"\n", topic)
+#    if(g_verbose):
+#        printf("msg topic=\"%s\"\n", topic)
     
     if(topic in topicinfo):
         messages_seen += 1
@@ -121,9 +122,28 @@ def fstr_if_not_old(topic, fname):
     else:
         printf(" fstr_if %s too old now=%d lasttime=%d delta=%d\n", fname, now, lasttime, now - lasttime)
         return ""
-             
+
+def log_latest():
+    """write current (latest) info to an easily parsed file"""
+    global topicinfo
+    fp = open(latest_file, "w");
+    now = time.time()
+    if(fp):
+        for titem in list(topics):
+            topic = titem[0]
+            ttype = titem[1]
+            logtag = titem[2]
+            value = topicinfo[topic]['last']
+            lasttime = topicinfo[topic]['lasttime']
+            fprintf(fp, "%18s  %s", logtag+':', str(value))
+            if(now - lasttime > old_data_threshold):
+                fprintf(fp, " old_%d", now - lasttime)
+            fprintf(fp, "\n");
+    fp.close()
+    
 def periodic():
     global last_send_minute
+    global messages_seen
     tmnow = time.localtime()
     if(last_send_minute < tmnow.tm_min):  # handle wraparound
         last_send_minute = 0;
@@ -143,6 +163,10 @@ def periodic():
             printf("get %s\n", url);
         r = requests.get(url);
         printf("request status %s\n", r.status_code)
+
+    if(messages_seen > 0):
+        log_latest()
+        messages_seen = 0
 
 def nomq_callback():
     printf("nomq_callback:\n")

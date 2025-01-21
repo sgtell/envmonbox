@@ -4,6 +4,7 @@ build:
 BINDIR=/usr/local/sbin
 MONBOXBIN=/home/envmonbox/bin
 MONBOXPLIB=/home/envmonbox/lib/python
+CGIBIN=/usr/lib/cgi-bin
 
 install:
 	sudo cp fs-lcdstats.py $(BINDIR)
@@ -12,3 +13,4 @@ install:
 	cp mb-forward 	 $(MONBOXBIN)
 	mkdir -p   $(MONBOXPLIB)
 	cp sgtmqtt.py  $(MONBOXPLIB)
+	sudo cp mb-status $(CGIBIN)

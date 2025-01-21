@@ -1,0 +1,49 @@
+#!/usr/bin/python3  -W ignore::DeprecationWarning
+# -*- coding: utf-8 -*-
+
+import os
+import sys
+import cgi
+import time
+
+import cgitb
+cgitb.enable()
+
+sys.path.append('/home/tell/venv/lib/python3.11/site-packages/')
+
+from perlish import *
+
+latest_file = "/home/envmonbox/log/latest"
+
+def post_file(fp):
+        print("<ul>\n")
+        for s in fp:
+            s = chomp(s) # todo remove all whitespace, not just last trailing
+            printf("<li>%s\n", s)
+        print("</ul>\n")
+
+print("Content-type: text/html")
+print()
+print("""
+<html>
+<head><title>mybdata-test</title></head>
+<body>
+""")
+
+try:
+#        fp = open(latest_file, "r")
+#        post_file(fp)
+#        fp.close()
+        print("data would go here\n")
+        
+except error as e:
+        print("<b>no data</b>\n")
+
+
+print("""
+</body>
+</html>
+""")
+
+exit(0)
+
