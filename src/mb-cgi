@@ -16,6 +16,8 @@ log_items = [
     "room_temp",
     "room_humidity",
     "outdoor_temp",
+    "room_temp_f",
+    "outdoor_temp_f",
 ]
 
 log_dict = dict()
@@ -32,13 +34,28 @@ for k in form.keys():
     if(k in log_dict):
         log_dict[k] = val;
         n_logitems += 1
-
+        
 dbfp = open(logdir + "/mbdata-db", "a");
 fprintf(dbfp, "--\nmbdata at %s\n", time.strftime("%c %z %Z"))
 fprintf(dbfp, "remote ip %s\n", remoteip)
 fprintf(dbfp, "form=%s\n", str(form))
 fprintf(dbfp, "%d logitems\n", n_logitems)
 dbfp.flush()
+
+def numfield(s):
+        if(s == '-' or s == '' or s == None):
+                return math.nan
+        else:
+                return float(s)
+
+def computed_fields():
+    global log_dict;
+    if('outdoor_temp' in log_dict):
+        t = numfield(log_dict['outdoor_temp'])
+        log_dict['outdoor_temp_f'] = t * 1.8 + 32
+    if('room_temp' in log_dict):
+        t = numfield(log_dict['room_temp'])
+        log_dict['room_temp_f'] = t * 1.8 + 32
 
 def get_clientid_list(fn):
     iddict = dict()
@@ -58,6 +75,8 @@ fprintf(dbfp, "get_clientid_list: %s\n", str(iddict))
 if(not iddict.get(clientid, False)):
     fprintf(dbfp, "id %s not on the list\n", clientid)
     exit(0)
+
+computed_fields()
 
 timestr = time.strftime("%y%m%d")
 
