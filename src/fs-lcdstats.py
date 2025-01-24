@@ -61,7 +61,12 @@ def get_ip():
 
 def get_time():
     tmnow = time.localtime()
-    return sprintf("%02d:%02d", tmnow.tm_hour, tmnow.tm_min);
+    if(tmnow.tm_sec & 1):
+        s = sprintf("%02d:%02d", tmnow.tm_hour, tmnow.tm_min);
+    else:
+        s = sprintf("%02d.%02d", tmnow.tm_hour, tmnow.tm_min);
+    return s
+       
 
 def get_cpu_load():
     #top -bn1 | grep load | awk '{printf \"CPU Load: %.2f\", $(NF-2)}'"
@@ -100,7 +105,7 @@ def get_temp_hum():
     return (temp, hum)
 
 def numfield(s):
-        if(s == '-' or s == ''):
+        if(s == '-' or s == '' or s == 'None'):
                 return math.nan
         else:
                 return float(s)
@@ -155,7 +160,31 @@ backlight = digitalio.DigitalInOut(board.D22)
 backlight.switch_to_output()
 backlight.value = True
 
-while True:
+def draw_signon():
+    # Draw a black filled box to clear the image.
+    draw.rectangle((0, 0, width, height), outline=0, fill=0)
+
+    tstr = "lcdstats " + get_time()
+    # Write our lines of text.
+    y = top
+    bbox = font.getbbox(tstr)
+    draw.text((x, y), tstr, font=font, fill="#FFFFFF")
+    
+    # Display image.
+    disp.image(image, rotation)
+
+def draw_shutdown():
+    # Draw a black filled box to clear the image.
+    draw.rectangle((0, 0, width, height), outline=0, fill=0)
+    tstr = "lcdstats exit"
+    # Write our line of text.
+    y = top
+    draw.text((x, y), tstr, font=font, fill="#FFFFFF")
+    # Display image.
+    disp.image(image, rotation)
+
+
+def draw_stats():
     # Draw a black filled box to clear the image.
     draw.rectangle((0, 0, width, height), outline=0, fill=0)
 
@@ -179,7 +208,7 @@ while True:
     timestr = get_time()
     (temp, hum) = get_temp_hum()
     tempf = temp * 1.8 + 32
-    thstr   = sprintf("room    %2.0fF  %2.0f%% H", tempf, hum)
+    thstr   = sprintf("room    %2.0fF  %2.0f%% rh", tempf, hum)
     vals = get_latest()
     if('outdoor_temp_f' in vals):
         outtstr = sprintf("outside %2.0fF\n", vals['outdoor_temp_f']);
@@ -228,6 +257,13 @@ while True:
     # Display image.
     disp.image(image, rotation)
 
+    
+draw_signon()
+    
+while True:
+    draw_stats()
     if(args.test):
-               exit(0)
-    time.sleep(0.3)
+        draw_shutdown()
+        exit(0)
+    time.sleep(0.2)
+    

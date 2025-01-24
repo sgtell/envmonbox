@@ -1,0 +1,6 @@
+#!/bin/sh
+
+systemctl status lcdstats
+systemctl status mb-gather
+systemctl status mb-forward
+
