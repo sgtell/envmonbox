@@ -5,6 +5,8 @@ Description=Display system info on PiTFT display
 Type=simple
 User=root
 WorkingDirectory=/home/envmonbox
+# why doesn't it use /etc/timezone?
+Environment="TZ=US/Eastern"
 ExecStart=/home/envmonbox/bin/fs-lcdstats.py
 StandardOutput=journal
 StandardError=journal

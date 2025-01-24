@@ -27,6 +27,7 @@ parser.add_argument("--test", "-t", default=False, action='store_true');
 args = parser.parse_args();
 g_verbose = args.verbose
 
+#fprintf(sys.stderr, "TZ=%s\n", os.getenv('TZ'))
 
 # Configuration for CS and DC pins (these are FeatherWing defaults on M0/M4):
 cs_pin = digitalio.DigitalInOut(board.CE0)
@@ -116,7 +117,7 @@ def get_latest():
     exdict = dict()
     for s in fp:
         s = chomp(s) # todo remove all whitespace, not just last trailing
-        m = re.search("\s+([a-zA-Z0-9_]+):\s*([-naNA.0-9]+)(.*)$", s)
+        m = re.search("\s+([a-zA-Z0-9_]+):\s*([-A-Za-z.0-9]+)(.*)$", s)
         if(m):
             logtag = m.group(1)
             valstr = m.group(2)
@@ -210,11 +211,12 @@ def draw_stats():
     tempf = temp * 1.8 + 32
     thstr   = sprintf("room    %2.0fF  %2.0f%% rh", tempf, hum)
     vals = get_latest()
-    if('outdoor_temp_f' in vals):
+#    printf("vals=%s\n", str(vals))
+    if('outdoor_temp_f' in vals and (not math.isnan(vals['outdoor_temp_f']))):
+#        printf("outdoor %s %s\n", str(vals['outdoor_temp_f']), str( vals['outdoor_temp_f'] is not math.nan))
         outtstr = sprintf("outside %2.0fF\n", vals['outdoor_temp_f']);
     else:
-        outtstr = sprintf("outside ----\n", vals['outdoor_temp_f']);
-        printf("vals=%s\n", str(vals))
+        outtstr = sprintf("outside ----\n")
 
     if(args.test):
         printf("%s\n", timestr)
@@ -263,7 +265,6 @@ draw_signon()
 while True:
     draw_stats()
     if(args.test):
-        draw_shutdown()
         exit(0)
     time.sleep(0.2)
     
