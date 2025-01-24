@@ -1,0 +1,18 @@
+[Unit]
+Description=Display system info on PiTFT display
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/envmonbox
+ExecStart=/home/envmonbox/bin/fs-lcdstats.py
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=lcdstats
+
+Restart=always
+RestartSec=15s
+
+[Install]
+WantedBy=multi-user.target
+

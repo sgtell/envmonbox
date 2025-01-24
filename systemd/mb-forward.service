@@ -1,0 +1,22 @@
+[Unit]
+Description=daemon to forward monitor data via http
+After=mosquitto.service
+Requires=mosquitto.service
+
+[Service]
+Type=simple
+User=envmonbox
+WorkingDirectory=/home/envmonbox
+ExecStart=/home/envmonbox/bin/mb-forward
+ExecStartPre=mkdir -m 755 -p /home/envmonbox/log
+#ExecStartPre=chown envmonbox /home/envmonbox/log
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mbforward
+
+Restart=always
+RestartSec=15s
+
+[Install]
+WantedBy=multi-user.target
+

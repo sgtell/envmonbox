@@ -181,7 +181,11 @@ while True:
     tempf = temp * 1.8 + 32
     thstr   = sprintf("room    %2.0fF  %2.0f%% H", tempf, hum)
     vals = get_latest()
-    outtstr = sprintf("outside %2.0fF\n", vals['outdoor_temp_f']);
+    if('outdoor_temp_f' in vals):
+        outtstr = sprintf("outside %2.0fF\n", vals['outdoor_temp_f']);
+    else:
+        outtstr = sprintf("outside ----\n", vals['outdoor_temp_f']);
+        printf("vals=%s\n", str(vals))
 
     if(args.test):
         printf("%s\n", timestr)

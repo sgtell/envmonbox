@@ -1,0 +1,22 @@
+[Unit]
+Description=daemon to gather monitoring data and publish to mqtt
+After=mosquitto.service
+Requires=mosquitto.service
+
+[Service]
+Type=simple
+User=envmonbox
+WorkingDirectory=/home/envmonbox
+ExecStart=/home/envmonbox/bin/mb-gather
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mbgather
+
+Restart=always
+RestartSec=15s
+
+
+
+[Install]
+WantedBy=multi-user.target
+
