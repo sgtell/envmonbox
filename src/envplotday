@@ -1,0 +1,320 @@
+#!/usr/bin/perl
+use FileHandle;
+use Getopt::Long;
+use CGI;
+use POSIX qw(strftime mktime);
+use Data::Dumper;
+
+my @filelist;
+my $today;
+my $debug;
+
+my $dlogkey = '881034';
+my $halogdir = "/home/envmonbox/log/";
+my $plotdir = "/var/www/html/envplots";
+my $http_plot_path = "/envplots";
+my $gnuplotprog = "gnuplot";
+my $ploturlprefix = "envplotday";
+
+my $header_index_hack = {};
+$header_index_hack->{outdoor} =  7;
+$header_index_hack->{indoor} =  6;
+$header_index_hack->{indoor_humid} =  2;
+
+#foreach my $k (keys(%{$header_index_hack})) {
+#	printf "$k %s\n", $header_index_hack->{$k};
+#}
+
+my $NAN= -sin(9**9**9);  # works on old perl, where "NAN" doesn't.
+#my $inf = 9**9**9;
+#my $neginf = -9**9**9;
+
+$gnuplot_png_cmd="set terminal png size 900,400\n";	# for gnuplot >= ~4.2
+#$gnuplot_png_cmd="set terminal png picsize 800 400\n";  # for old gnuplot ~4.0
+
+sub usage {
+	print STDERR "$0 [options]\n";
+	print STDERR "options:\n";
+	print STDERR " -v   verbose\n";
+}
+
+#print Dumper $q;
+$now = time;
+if(defined($ENV{'QUERY_STRING'})) {  # we are a CGI script
+	$query = new CGI;
+	$ymdreq = $query->param('ymd');
+
+	$reqtime = ymd_to_time($ymdreq);
+
+	chdir($plotdir);
+} else {
+#	$halogdir = "";
+
+	my %optctl = ("D|debug!"   => \$debug,
+              "t|today!" => \$today,
+              "y|yesterday!" => \$yesterday,
+              "f|file!" => \$usefile,
+              "h|html!" => \$dohtml,
+              "v|verbose!" => \$verbose,
+             );
+
+	Getopt::Long::config('no_auto_abbrev',
+                     'no_ignore_case',
+		     'no_ignore_case_always');
+
+	if(!GetOptions(%optctl)) {
+		&usage();
+		exit 1;
+	}
+	if($today){
+		$reqtime = time;
+	} elsif($yesterday){
+		$now = time;
+		$reqtime = $now - 24*3600;
+	} elsif($usefile) {
+		$datestr = "($usefile)";
+		$fname = $usefile;
+	} elsif($#ARGV >= 0) {
+		$reqtime = ymd_to_time($ARGV[0]);
+	} else {
+		$reqtime = $now;
+
+
+	}
+}
+# at this point either fname and datestr are defined,
+# or we create them from $reqtime
+
+if(!$fname) { # use reqtime
+	$ymdstr = strftime "%y%m%d", localtime($reqtime);  # data log file name
+	$datestr = strftime "%B %d, %Y", localtime($reqtime);
+	$fname = "dlog.$dlogkey.$ymdstr";
+}
+
+$todaylink = sprintf "/cgi-bin/%s", $ploturlprefix;
+if(reqtime) {
+	$prev_day = $reqtime - 24*3600;
+	$prev_ymd = strftime "%y%m%d", localtime($prev_day);
+	$prevlink = sprintf "/cgi-bin/%s?ymd=%s", $ploturlprefix, $prev_ymd;
+
+	$next_day = $reqtime + 24*3600;
+	if($next_day < $now) {
+		$next_ymd = strftime "%y%m%d", localtime($next_day);
+		$nextlink = sprintf "/cgi-bin/%s?ymd=%s", $ploturlprefix, $next_ymd;
+	}
+}
+
+$basename = $fname;
+$basename =~ s|^.*/||;
+
+$pfname = $basename . ".dat";
+$gpname = $basename . ".gnuplot";
+$pngname = $basename . ".png";
+if($debug) {
+	printf "Content-type: text/html\n\n";
+	printf "<body><pre>\n";
+	printf "file: $fname\n";
+	printf "date: $datestr\n";
+	printf "data: $pfname\n";
+	printf "gnuplot: $gpname\n";
+	printf "png: $pngname\n";
+	print Dumper $header_keys_hack;
+	printf "</pre><hr/>\n";
+}
+
+# todo: check dates, only regenerate if needed.
+# todo: add form to select another day to view. (calendar)
+
+$lt = process_data("$halogdir$fname", $pfname);
+gen_gnuplot($gpname, $datestr, $pfname, $pngname, $lt);
+run_gnuplot($gpname);
+
+if($query || $dohtml) {
+	generate_htmlpage($1, $pngname);
+}
+
+exit 0;
+
+#############################################################################
+
+sub ymd_to_time {
+	my($ymdreq) = @_;
+
+	if($ymdreq =~ m/^(\d\d)(\d\d)(\d\d)$/) {
+		$yr = $1;
+		$mo = $2-1;
+		$mday = $3;
+		if($yr < 50) {
+			$yr += 100;
+		}
+
+		$reqtime = mktime(0, 2, 0, $mday, $mo, $yr, 0, 0, -1);
+
+	} else {
+		if($debug) {
+			printf "ymd-to-time $ymdreq failed\n";
+		}
+		$reqtime = time;
+	}
+	return $reqtime;
+}
+
+sub process_data {
+
+	my($logfname, $datfname) = @_;
+
+	my ($fp, $line);
+	my $lasttemp = {};
+
+	$fp = new FileHandle $logfname, "r";
+	if(!$fp) {
+		print STDERR "logfile $logfname: $!\n";
+		exit 1;
+	}
+
+	$ofp = new FileHandle $datfname, "w";
+	if(!$ofp) {
+		print STDERR "datafile $datfname: $!\n";
+		exit 1;
+	}
+
+	line: while($line = $fp->getline()) {
+		if($line =~ m/^# (time.*$)/) {
+			@hdrs = split(/\s+/, $1);
+			$nhdrs = scalar(@hdrs);
+			print $ofp "\n";
+#			printf STDERR "headers=%s\n", join(';', @hdrs);
+			for($i = 0; $i < $nhdrs; $i++) {
+				$header_index{$hdrs[$i]} = $i;
+			}
+			# print Dumper \%header_index;
+			next line;
+		}
+		$header_index = $header_index_hack;
+ # use headings to get indices
+		if($line =~ m/^\s*#/) {
+			print $ofp $line;
+			next line;
+		}
+		my(@f, @t, $hr);
+		@f = split(/\s+/, $line);;
+		@t = split(/:/, $f[0]);
+
+		$hr = $t[0]+$t[1]/60;
+#		if($hr < 1/60) {
+#			$hr += 24;
+#		}
+
+		for($i = 1; $i <= 12; $i++) {
+			$f[$i] = checknum($f[$i]);
+		}
+#		printf STDERR "fields %s\n", join(',', @f);
+
+		foreach my $k (keys(%{$header_index})) {
+			$lastemp->{$k} = $f[ $header_index->{$k} ];
+		}
+
+		# if(defined( $header_index{'outdoor'} )) {
+		# 	$lastemp->{outdoor}    = $f[ $header_index{'outdoor'} ];
+		# } else {
+		# 	$lastemp->{outdoor}    = $f[ $header_index{'outdoor2'} ];
+		# }
+		# $lastemp->{upstairs}   =  $f[ $header_index{'bedroom'} ];
+		# $lastemp->{comcloset}  = $f[$header_index{'comcloset'} ];
+		# $lastemp->{battrm}     = $f[$header_index{'battrm'} ];
+		# $lastemp->{garage}     = $f[$header_index{'garage-temp'} ];
+		# $lastemp->{attic}      = $f[ $header_index{'attic'} ];
+		# $lastemp->{downstairs} = $f[ $header_index{'current'} ]; # thermostat
+		# $lastemp->{thermostat} = $f[ $header_index{'setpoint'} ]; # thermostat
+
+		# todo table for this at the top
+		printf $ofp "%6.3f ", $hr;			# 1
+		printf $ofp "%5.1f ", $lastemp->{outdoor}; 	# 2
+		printf $ofp "%5.1f ", $lastemp->{indoor};	# 3
+		printf $ofp "%5.1f ", $lastemp->{indoor_humid};	# 4
+
+		print  $ofp "\n";
+	}
+	$fp->close();
+	$ofp->close();
+	return $lastemp;
+}
+
+sub gen_gnuplot {
+	my($gpfname, $datestr, $datfname, $pngname, $ltemp) = @_;
+
+	$ofp = new FileHandle $gpfname, "w";
+	if(!$ofp) {
+		print STDERR "plotfile $gpfname: $!\n";
+		exit 1;
+	}
+
+	print $ofp <<EOH;
+set title "Temperatures: $datestr"
+set xlabel "Hour"
+set ylabel "Degrees F or %RH"
+set grid
+set xtics 0,2,25
+set xrange [0:24]
+set key outside
+
+EOH
+print $ofp $gnuplot_png_cmd;
+printf $ofp "set output \"%s\"\n", $pngname;
+printf $ofp "plot \"$datfname\" using 1:2 title \"outdoor: %5.1f\" with lines, \\\n", $ltemp->{outdoor};
+printf $ofp " \"$datfname\" using 1:3  title \"indoor: %5.1f\" with lines, \\\n", $ltemp->{indoor};
+printf $ofp " \"$datfname\" using 1:4  title \"humidity %5.1f %%\" with lines, \\\n", $ltemp->{indoor_humid};
+#print $ofp "set output\n";
+	$ofp->close();
+}
+
+sub run_gnuplot {
+	my($gpfname) = @_;
+
+	$rc = system("$gnuplotprog $gpfname");
+
+}
+
+sub generate_htmlpage {
+	my($q, $pngname) = @_;
+
+	# Prepare various HTTP responses
+#        print $q->header('text/html');
+	print "Content-type: text/html\n\n";
+
+	print <<"EOH";
+<html>
+ <HEAD>
+  <TITLE>Temperature Plot</TITLE>
+ </HEAD
+<body>
+<a href="$todaylink"><img src="$http_plot_path/$pngname"></a>
+<br/>
+EOH
+
+	if($prevlink) {
+		printf "<a href=\"%s\">Previous</a>\n", $prevlink;
+	}
+	printf "<a href=\"%s\">Today</a>\n", $todaylink;
+	if($nextlink) {
+		printf "<a href=\"%s\">Next</a>\n", $nextlink;
+	}
+
+
+print "</body></html>\n";
+
+
+}
+
+sub checknum
+{
+	my ($str) = @_;
+	if($str !~ m/^[0-9.+-]/) {
+		return $NAN;
+	}
+	my $n = $str + 0.0;
+	if($n > 184.0) {
+		$n = $NAN;
+	}
+	return $n;
+}
