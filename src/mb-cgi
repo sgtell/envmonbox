@@ -3,6 +3,7 @@ import os
 import sys
 import cgi
 import time
+import math
 
 sys.path.append('/home/tell/share/python')
 from perlish import *
@@ -43,7 +44,7 @@ fprintf(dbfp, "%d logitems\n", n_logitems)
 dbfp.flush()
 
 def numfield(s):
-        if(s == '-' or s == '' or s == None):
+        if(s == '-' or s == '' or s == None or s == 'NaN' or s == 'nan' ):
                 return math.nan
         else:
                 return float(s)
@@ -52,10 +53,10 @@ def computed_fields():
     global log_dict;
     if('outdoor_temp' in log_dict):
         t = numfield(log_dict['outdoor_temp'])
-        log_dict['outdoor_temp_f'] = t * 1.8 + 32
+        log_dict['outdoor_temp_f'] = sprintf("%.1f", t * 1.8 + 32)
     if('room_temp' in log_dict):
         t = numfield(log_dict['room_temp'])
-        log_dict['room_temp_f'] = t * 1.8 + 32
+        log_dict['room_temp_f'] = sprintf("%.1f", t * 1.8 + 32)
 
 def get_clientid_list(fn):
     iddict = dict()
@@ -70,7 +71,7 @@ def get_clientid_list(fn):
     return iddict
 
 iddict = get_clientid_list(idlist) 
-fprintf(dbfp, "get_clientid_list: %s\n", str(iddict))
+#fprintf(dbfp, "get_clientid_list: %s\n", str(iddict))
 
 if(not iddict.get(clientid, False)):
     fprintf(dbfp, "id %s not on the list\n", clientid)
