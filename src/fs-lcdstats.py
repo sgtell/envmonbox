@@ -56,9 +56,17 @@ disp = st7789.ST7789(
 )
 
 def get_ip():
+    """find an IPV4 address for us, and return it as a string.
+    hostname -I might also return ipv6 addresses, but strip those out,
+    because our caller can't display that many characters anyway.  future: fix all that with scrolling or whatever"""
     cmd = "hostname -I";
     ipstr = subprocess.check_output(cmd, shell=True).decode("utf-8")
-    return ipstr.rstrip("\r\n")
+    ipstr = ipstr.rstrip("\r\n")
+    iplist = ipstr.split()
+    for ips in iplist:
+        if(re.search('.', ips)):
+            return ips
+    return None
 
 def get_time():
     tmnow = time.localtime()

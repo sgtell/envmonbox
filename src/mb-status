@@ -45,7 +45,7 @@ def post_file(fp):
         format_fdata(valdict, exdict)
 
 def numfield(s):
-        if(s == '-' or s == ''):
+        if(s == '-' or s == '' or s == 'None' or s == 'NaN'):
                 return math.nan
         else:
                 return float(s)
@@ -65,7 +65,7 @@ def format_fdata(valdict, exdict):
         ot_c = numfield(valdict.get('outdoor_temp', ''))
         if(ot_c != math.nan):
                 ot_f = ot_c * 1.8 + 32.0
-                printf("<li> Outdoor: %.1f\n", rt_f)
+                printf("<li> Outdoor: %.1f\n", ot_f)
                 
         print("</ul>")
 

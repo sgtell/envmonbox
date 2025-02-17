@@ -138,8 +138,8 @@ def log_latest():
             value = topicinfo[topic]['last']
             lasttime = topicinfo[topic]['lasttime']
             fprintf(fp, "%18s  %s", logtag+':', str(value))
-            if(now - lasttime > old_data_threshold):
-                fprintf(fp, " old_%d", now - lasttime)
+#            if(now - lasttime > old_data_threshold):
+            fprintf(fp, "  %d", now - lasttime)
             fprintf(fp, "\n");
     fp.close()
 
