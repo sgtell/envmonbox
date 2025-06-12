@@ -15,6 +15,7 @@ my $plotdir = "/var/www/html/envplots";
 my $http_plot_path = "/envplots";
 my $gnuplotprog = "gnuplot";
 my $ploturlprefix = "envplotday";
+my $plot_title = "Fullcircle Temperatures";
 
 my $header_index_hack = {};
 $header_index_hack->{outdoor} =  7;
@@ -126,7 +127,7 @@ if($debug) {
 # todo: add form to select another day to view. (calendar)
 
 $lt = process_data("$halogdir$fname", $pfname);
-gen_gnuplot($gpname, $datestr, $pfname, $pngname, $lt);
+gen_gnuplot($gpname, $datestr, $pfname, $pngname, $lt, $plot_title);
 run_gnuplot($gpname);
 
 if($query || $dohtml) {
@@ -241,7 +242,7 @@ sub process_data {
 }
 
 sub gen_gnuplot {
-	my($gpfname, $datestr, $datfname, $pngname, $ltemp) = @_;
+	my($gpfname, $datestr, $datfname, $pngname, $ltemp, $plottitle) = @_;
 
 	$ofp = new FileHandle $gpfname, "w";
 	if(!$ofp) {
@@ -250,7 +251,7 @@ sub gen_gnuplot {
 	}
 
 	print $ofp <<EOH;
-set title "Temperatures: $datestr"
+set title "$plottitle: $datestr"
 set xlabel "Hour"
 set ylabel "Degrees F or %RH"
 set grid

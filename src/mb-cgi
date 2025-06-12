@@ -19,6 +19,10 @@ log_items = [
     "outdoor_temp",
     "room_temp_f",
     "outdoor_temp_f",
+    "outdoor_tx2_temp",
+    "outdoor_tx2_temp_f",
+    "indoor_tx2_temp",
+    "indoor_tx2_temp_f",
 ]
 
 log_dict = dict()
@@ -54,6 +58,12 @@ def computed_fields():
     if('outdoor_temp' in log_dict):
         t = numfield(log_dict['outdoor_temp'])
         log_dict['outdoor_temp_f'] = sprintf("%.1f", t * 1.8 + 32)
+    if('outdoor_tx2_temp' in log_dict):
+        t = numfield(log_dict['outdoor_tx2_temp'])
+        log_dict['outdoor_tx2_temp_f'] = sprintf("%.1f", t * 1.8 + 32)
+    if('indoor_tx2_temp' in log_dict):
+        t = numfield(log_dict['indoor_tx2_temp'])
+        log_dict['indoor_tx2_temp_f'] = sprintf("%.1f", t * 1.8 + 32)
     if('room_temp' in log_dict):
         t = numfield(log_dict['room_temp'])
         log_dict['room_temp_f'] = sprintf("%.1f", t * 1.8 + 32)
