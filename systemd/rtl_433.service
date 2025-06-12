@@ -1,0 +1,20 @@
+[Unit]
+Description=use rtl_433 as a daemon to publish some messages received to mqtt
+After=mosquitto.service
+Requires=mosquitto.service
+
+[Service]
+Type=simple
+User=envmonbox
+WorkingDirectory=/home/envmonbox
+ExecStart=/usr/local/bin/rtl_433
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=rtl433
+
+Restart=always
+RestartSec=30s
+
+[Install]
+WantedBy=multi-user.target
+

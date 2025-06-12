@@ -30,7 +30,10 @@ topics = [
     [ "monbox/cpu_temp",            float,        "cpu_temp" ],       
     [ "monbox/room_temp",           float,        "room_temp"],      
     [ "monbox/room_humidity",       float,        "room_humidity"],  
-    [ "tele/tasmota_F99C40/SENSOR", '18b20_json' ,"outdoor_temp"],  
+    [ "tele/tasmota_F99C40/SENSOR", '18b20_json' ,"indoor3_temp"],  # moved to bedroom
+    [ "tele/tasmota_88E4AB/SENSOR", '18b20_json' ,"outdoor_temp"],  # new pcb in living room
+    [ "rtl_433/fullcircle/devices/Thermopro-TX2C/2/250/temperature_C",       float,        "outdoor_tx2_temp"],  
+    [ "rtl_433/fullcircle/devices/Thermopro-TX2C/1/238/temperature_C",       float,        "indoor_tx2_temp"],  
 ]
 
 parser =  argparse.ArgumentParser(description="subscribe to several mqtt topics and log their values periodicly");
@@ -75,7 +78,7 @@ def on_connect(mq, userdata, flags, rc):
     if(mq):
         mq.subscribe("monbox/#")
         mq.subscribe("tele/#")
-
+        mq.subscribe("rtl_433/fullcircle/devices/Thermopro-TX2C/#")
 
 def on_message(msg):
     global topicinfo
@@ -151,6 +154,8 @@ def forward_web():
         url += fstr_if_not_old("monbox/room_temp",  "room_temp")
         url += fstr_if_not_old("monbox/room_humidity",  "room_humidity")
         url += fstr_if_not_old("tele/tasmota_F99C40/SENSOR",  "outdoor_temp")
+        url += fstr_if_not_old("rtl_433/fullcircle/devices/Thermopro-TX2C/2/250/temperature_C",  "outdoor_tx2_temp")
+        url += fstr_if_not_old("rtl_433/fullcircle/devices/Thermopro-TX2C/1/238/temperature_C",  "indoor_tx2_temp")
         if(g_verbose):
             printf("get %s\n", url);
         r = requests.get(url);
