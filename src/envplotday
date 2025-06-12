@@ -269,8 +269,8 @@ printf $ofp "set output \"%s\"\n", $pngname;
 printf $ofp "plot \"$datfname\" using 1:2 title \"outdoor: %5.1f\" with lines, \\\n", $ltemp->{outdoor};
 printf $ofp " \"$datfname\" using 1:3  title \"indoor: %5.1f\" with lines, \\\n", $ltemp->{indoor};
 printf $ofp " \"$datfname\" using 1:4  title \"humidity %5.1f %%\" with lines, \\\n", $ltemp->{indoor_humid};
-printf $ofp " \"$datfname\" using 1:5  title \"ourdoor2 %5.1f %%\" with lines, \\\n", $ltemp->{indoor_humid};
-printf $ofp " \"$datfname\" using 1:6  title \"indoor2 %5.1f %%\" with lines, \\\n", $ltemp->{indoor_humid};
+printf $ofp " \"$datfname\" using 1:5  title \"ourdoor2 %5.1f %%\" with lines, \\\n", $ltemp->{outdoor2};
+printf $ofp " \"$datfname\" using 1:6  title \"indoor2 %5.1f %%\" with lines, \\\n", $ltemp->{indoor2};
 #print $ofp "set output\n";
 	$ofp->close();
 }
