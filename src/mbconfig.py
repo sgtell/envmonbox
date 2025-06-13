@@ -4,6 +4,7 @@
 #
 
 import sys
+import time
 sys.path.append('/home/tell/proj/python');
 from perlish import *
 
@@ -35,6 +36,7 @@ class mbslist:
     """class to hold list of mbsensor objects, with helper methods"""
     def __init__(self):
         self.mblist = []
+        self.bytopic = None
 
     def print(self):
         pprint.pprint(self.mblist)
@@ -58,9 +60,10 @@ class mbslist:
     def setup_data(self):
         """set up quick-access dictionaries.  call this after init_static or other sensor config load"""
         self.bytopic = dict()
+        self.bytag = dict()
         for s in self.mblist:
             self.bytopic[ s.topic ] = s
-
+            self.bytag[ s.ftag ] = s
 
 if __name__ == "__main__":
     import sys
