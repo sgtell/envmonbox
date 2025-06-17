@@ -13,6 +13,7 @@ from perlish import *
 
 sys.path.append('/home/envmonbox/lib/python');
 import sgtmqtt
+import mbconfig
 
 mqhost="localhost"
 mymq = None
@@ -38,10 +39,13 @@ topics = [
 
 parser =  argparse.ArgumentParser(description="subscribe to several mqtt topics and log their values periodicly");
 parser.add_argument("--verbose", "-v", default=False, action='store_true');
+parser.add_argument("--nosend", "-n", default=False, action='store_true', help="dont actually send data");
+parser.add_argument("--host", type=str, help="mqtt hostname");
 args = parser.parse_args();
 g_verbose = args.verbose
 
 topicinfo = None
+mbslist = None
 messages_seen = 0
 tmnow = time.localtime() 
 last_send_minute = tmnow.tm_min
@@ -59,6 +63,7 @@ def get_fwid():
 
 def init_topicinfo():
     global topicinfo
+    global mbslist
     topicinfo = dict()
     for titem in list(topics):
         t = titem[0]
@@ -68,8 +73,10 @@ def init_topicinfo():
         td['last'] = None
         td['type'] = ttype
         td['lasttime'] = 0
+    mbslist = mbconfig.mbslist()
+    mbslist.init_static()
+    mbslist.setup_data()
 #    printf("topicinfo=%s\n", str(topicinfo));
-
 
 def on_connect(mq, userdata, flags, rc):
     print("Connected with result code "+str(rc))
@@ -84,11 +91,29 @@ def on_message(msg):
     global topicinfo
     global messages_seen
     topic = str(msg.topic)
-#    if(g_verbose):
-#        printf("msg topic=\"%s\"\n", topic)
-    
-    if(topic in topicinfo):
+
+    # maybe this ought to be an mbsensor or mbslist method?
+    if(topic in mbslist.bytopic):
         messages_seen += 1
+        mbslist.bytopic[topic].lasttime = time.time()
+        ttype = mbslist.bytopic[topic].mtype
+        if(ttype == float):
+            s = msg.payload.decode('ascii')
+            mbslist.bytopic[topic].last = float(s)
+        elif(ttype == str):
+            mbslist.bytopic[topic].last = msg.payload.decode('ascii')
+        elif(ttype == int):
+            s = msg.payload.decode('ascii')
+            mbslist.bytopic[topic].last = int(s, 0);
+        elif(ttype == '18b20_json'):
+            data = json.loads( msg.payload.decode('ascii') );
+            tempstr = data['DS18B20']['Temperature'];
+            mbslist.bytopic[topic].last = tempstr
+        else:
+            printf("unknown type %s for topic %s; treating as str\n", str(ttype), topic)
+            mbslist.bytopic[topic].last = msg.payload.decode('ascii')
+
+    if(topic in topicinfo):
         topicinfo[topic]['lasttime'] = time.time()
         ttype = topicinfo[topic]['type']
         if(ttype == float):
@@ -114,9 +139,12 @@ def on_message(msg):
 def print_current():
     "print current info on all known topics"
     global topicinfo
-    for t, td in topicinfo.items():
-        printf(" %30s %12d %10s\n", t, td['lasttime'], str(td['last']))
+#    for t, td in topicinfo.items():
+#        printf(" %30s %12d %10s\n", t, td['lasttime'], str(td['last']))
+    for mbs in mbslist.mblist:
+        printf(" %30s %12d %10s\n", mbs.ftag, mbs.lasttime, str(mbs.last))
     printf("\n");
+    
 
 def fstr_if_not_old(topic, fname):
     global topicinfo
@@ -132,32 +160,47 @@ def log_latest():
     """write current (latest) info to an easily parsed file"""
     global topicinfo
     fp = open(latest_file, "w");
-    now = time.time()
     if(fp):
-        for titem in list(topics):
-            topic = titem[0]
-            ttype = titem[1]
-            logtag = titem[2]
-            value = topicinfo[topic]['last']
-            lasttime = topicinfo[topic]['lasttime']
-            fprintf(fp, "%18s  %s", logtag+':', str(value))
-#            if(now - lasttime > old_data_threshold):
-            fprintf(fp, "  %d", now - lasttime)
+        now = time.time()
+        for mbs in mbslist.mblist:
+            printf(" %30s %12d %10s\n", mbs.ftag, mbs.lasttime, str(mbs.last))
+            fprintf(fp, "%18s  %s", mbs.ftag+':', str(mbs.last))
+            fprintf(fp, "  %d", now - mbs.lasttime)
             fprintf(fp, "\n");
+        
+#         for titem in list(topics):
+#             topic = titem[0]
+#             ttype = titem[1]
+#             logtag = titem[2]
+#             value = topicinfo[topic]['last']
+#             lasttime = topicinfo[topic]['lasttime']
+#             fprintf(fp, "%18s  %s", logtag+':', str(value))
+# #            if(now - lasttime > old_data_threshold):
+#             fprintf(fp, "  %d", now - lasttime)
+#             fprintf(fp, "\n");
     fp.close()
 
 def forward_web():
-        url = baseurl + "?id=" + str(fwid)
-        # TODO pull this into a table at the top for ease of config.
-        url += fstr_if_not_old("monbox/cpu_load",  "cpu_load")
-        url += fstr_if_not_old("monbox/cpu_temp",  "cpu_temp")
-        url += fstr_if_not_old("monbox/room_temp",  "room_temp")
-        url += fstr_if_not_old("monbox/room_humidity",  "room_humidity")
-        url += fstr_if_not_old("tele/tasmota_F99C40/SENSOR",  "outdoor_temp")
-        url += fstr_if_not_old("rtl_433/fullcircle/devices/Thermopro-TX2C/2/250/temperature_C",  "outdoor_tx2_temp")
-        url += fstr_if_not_old("rtl_433/fullcircle/devices/Thermopro-TX2C/1/238/temperature_C",  "indoor_tx2_temp")
-        if(g_verbose):
-            printf("get %s\n", url);
+    global g_verbose
+    url = baseurl + "?id=" + str(fwid)
+        
+    for mbs in mbslist.mblist:
+        if(mbs.forward):
+            url += mbs.fstr_if_not_old(old_data_threshold)
+
+    oldurl = baseurl + "?id=" + str(fwid)
+    oldurl += fstr_if_not_old("monbox/cpu_load",  "cpu_load")
+    oldurl += fstr_if_not_old("monbox/cpu_temp",  "cpu_temp")
+    oldurl += fstr_if_not_old("monbox/room_temp",  "room_temp")
+    oldurl += fstr_if_not_old("monbox/room_humidity",  "room_humidity")
+    oldurl += fstr_if_not_old("tele/tasmota_F99C40/SENSOR",  "outdoor_temp")
+    oldurl += fstr_if_not_old("rtl_433/fullcircle/devices/Thermopro-TX2C/2/250/temperature_C",  "outdoor_tx2_temp")
+    oldurl += fstr_if_not_old("rtl_433/fullcircle/devices/Thermopro-TX2C/1/238/temperature_C",  "indoor_tx2_temp")
+
+    if(g_verbose):
+        printf("get %s\n", url);
+        printf("get-old %s\n", oldurl);
+    if(not args.nosend):
         r = requests.get(url);
         printf("request status %s\n", r.status_code)
     
