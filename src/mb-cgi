@@ -12,24 +12,6 @@ import mbconfig
 logdir="/home/envmonbox/log"
 idlist="/home/envmonbox/clientid-list"
 
-log_items = [
-    "cpu_load",                 # 1  
-    "cpu_temp",                 # 2  
-    "room_temp",                # 3  
-    "room_humidity",            # 4  
-    "outdoor_temp",             # 5  
-    "room_temp_f",              # 6  
-    "outdoor_temp_f",           # 7  
-    "outdoor_tx2_temp",         # 8  
-    "outdoor_tx2_temp_f",       # 9  
-    "indoor_tx2_temp",          # 10  
-    "indoor_tx2_temp_f",        # 11  
-]
-
-log_dict = dict()
-for item in log_items:
-    log_dict[item] = None
-
 global mbslist
 mbslist = mbconfig.mbslist()
 mbslist.init_static()
@@ -42,9 +24,6 @@ remoteip = os.getenv('REMOTE_ADDR')
 n_logitems = 0
 for k in form.keys():
     val = form.getvalue(k)
-    if(k in log_dict):
-        log_dict[k] = val;
-        n_logitems += 1
     mbslist.set_value(k, val)
         
 dbfp = open(logdir + "/mbdata-db", "a");
@@ -53,6 +32,7 @@ fprintf(dbfp, "remote ip %s\n", remoteip)
 fprintf(dbfp, "form=%s\n", str(form))
 fprintf(dbfp, "%d logitems\n", n_logitems)
 fprintf(dbfp, "mbslist: %s\n", str(mbslist))
+fprintf(dbfp, "\n");
 dbfp.flush()
 
 def numfield(s):
@@ -60,21 +40,6 @@ def numfield(s):
                 return math.nan
         else:
                 return float(s)
-
-def computed_fields():
-    global log_dict;
-    if('outdoor_temp' in log_dict):
-        t = numfield(log_dict['outdoor_temp'])
-        log_dict['outdoor_temp_f'] = sprintf("%.1f", t * 1.8 + 32)
-    if('outdoor_tx2_temp' in log_dict):
-        t = numfield(log_dict['outdoor_tx2_temp'])
-        log_dict['outdoor_tx2_temp_f'] = sprintf("%.1f", t * 1.8 + 32)
-    if('indoor_tx2_temp' in log_dict):
-        t = numfield(log_dict['indoor_tx2_temp'])
-        log_dict['indoor_tx2_temp_f'] = sprintf("%.1f", t * 1.8 + 32)
-    if('room_temp' in log_dict):
-        t = numfield(log_dict['room_temp'])
-        log_dict['room_temp_f'] = sprintf("%.1f", t * 1.8 + 32)
 
 def computed_fields_mbslist(mbslist):
     for s in mbslist.mblist:
@@ -112,7 +77,6 @@ if(not iddict.get(clientid, False)):
     fprintf(dbfp, "id %s not on the list\n", clientid)
     exit(0)
 
-computed_fields()
 computed_fields_mbslist(mbslist)
 
 timestr = time.strftime("%y%m%d")
@@ -126,17 +90,10 @@ if(new_logfile):
     hdrs = mbslist.col_head_list()
     for h in hdrs:
         fprintf(logfp, " %s", h);
-    fprintf(logfp, " floattime")
+    fprintf(logfp, " floathour")
     fprintf(logfp, "\n")
         
 tm = time.localtime()
-fprintf(logfp, "%02d:%02d", tm.tm_hour, tm.tm_min)
-for item in log_items:
-    if(log_dict[item] is not None):
-        fprintf(logfp, " %s", log_dict[item])
-    else:
-        fprintf(logfp, "  NaN");
-fprintf(logfp, "\n");
 
 fprintf(logfp, "%02d:%02d", tm.tm_hour, tm.tm_min)
 for i in range(1, mbslist.maxcol+1):
