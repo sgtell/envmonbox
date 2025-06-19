@@ -1,0 +1,16 @@
+#!/bin/sh
+
+export REQUEST_METHOD='GET'
+export QUERY_STRING='id=1234&cpu_load=0.44&cpu_temp=70.6&room_temp=27.0&room_humidity=42.5&outdoor_temp=18.8&bedroom_indoor3=22.5&outdoor_tx2_temp=19.0&indoor_tx2_temp=23.5'
+export HTTP_ACCEPT='image/gif, image/x-xbitmap, image/jpeg, */*'
+export SERVER_PROTOCOL= 'HTTP/1.0'
+export REMOTE_ADDR='198.198.198.198'
+export DOCUMENT_ROOT='/usr/local/bin/httpd_1.4.2/public'
+export GATEWAY_INTERFACE='CGI/1.1'
+export REQUEST_METHOD='GET'
+export SCRIPT_NAME='/cgi-bin/mb-cgi'
+export SERVER_SOFTWARE='NCSA/1.4.2'
+export REMOTE_HOST='gateway.cgi.com'
+
+cd ../src
+./mb-cgi

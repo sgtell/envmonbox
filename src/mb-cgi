@@ -7,28 +7,34 @@ import math
 
 sys.path.append('/home/tell/share/python')
 from perlish import *
+import mbconfig
 
 logdir="/home/envmonbox/log"
 idlist="/home/envmonbox/clientid-list"
 
 log_items = [
-    "cpu_load",
-    "cpu_temp",
-    "room_temp",
-    "room_humidity",
-    "outdoor_temp",
-    "room_temp_f",
-    "outdoor_temp_f",
-    "outdoor_tx2_temp",
-    "outdoor_tx2_temp_f",
-    "indoor_tx2_temp",
-    "indoor_tx2_temp_f",
+    "cpu_load",                 # 1  
+    "cpu_temp",                 # 2  
+    "room_temp",                # 3  
+    "room_humidity",            # 4  
+    "outdoor_temp",             # 5  
+    "room_temp_f",              # 6  
+    "outdoor_temp_f",           # 7  
+    "outdoor_tx2_temp",         # 8  
+    "outdoor_tx2_temp_f",       # 9  
+    "indoor_tx2_temp",          # 10  
+    "indoor_tx2_temp_f",        # 11  
 ]
 
 log_dict = dict()
 for item in log_items:
     log_dict[item] = None
 
+global mbslist
+mbslist = mbconfig.mbslist()
+mbslist.init_static()
+mbslist.setup_data()
+    
 form = cgi.FieldStorage();
 clientid = form.getvalue('id')
 remoteip = os.getenv('REMOTE_ADDR')
@@ -39,12 +45,14 @@ for k in form.keys():
     if(k in log_dict):
         log_dict[k] = val;
         n_logitems += 1
+    mbslist.set_value(k, val)
         
 dbfp = open(logdir + "/mbdata-db", "a");
 fprintf(dbfp, "--\nmbdata at %s\n", time.strftime("%c %z %Z"))
 fprintf(dbfp, "remote ip %s\n", remoteip)
 fprintf(dbfp, "form=%s\n", str(form))
 fprintf(dbfp, "%d logitems\n", n_logitems)
+fprintf(dbfp, "mbslist: %s\n", str(mbslist))
 dbfp.flush()
 
 def numfield(s):
@@ -68,6 +76,16 @@ def computed_fields():
         t = numfield(log_dict['room_temp'])
         log_dict['room_temp_f'] = sprintf("%.1f", t * 1.8 + 32)
 
+def computed_fields_mbslist(mbslist):
+    for s in mbslist.mblist:
+        if(s.mbtype == 'mbgen'):
+            if(s.gsource in mbslist.bytag):
+                gsval = mbslist.bytag[ s.gsource ].last
+                if(gsval is not None):
+                    if(s.gfunc == "c_to_f"):
+                        gval = float(gsval) * 1.8 + 32;
+                        s.last = sprintf("%.1f", gval)
+                
 def get_clientid_list(fn):
     iddict = dict()
     idfp = open(fn, "r");
@@ -80,6 +98,13 @@ def get_clientid_list(fn):
     idfp.close()
     return iddict
 
+def file_exists(f):
+    try:
+        st = os.stat(f)
+        return True
+    except FileNotFoundError:
+        return False
+
 iddict = get_clientid_list(idlist) 
 #fprintf(dbfp, "get_clientid_list: %s\n", str(iddict))
 
@@ -88,18 +113,39 @@ if(not iddict.get(clientid, False)):
     exit(0)
 
 computed_fields()
+computed_fields_mbslist(mbslist)
 
 timestr = time.strftime("%y%m%d")
-
 logfname = sprintf("%s/dlog.%s.%s", logdir, clientid, timestr);
-        
+
+new_logfile = not(file_exists(logfname))
 logfp = open(logfname, "a");
-fprintf(logfp, "%s", time.strftime("%H:%M"))
+
+if(new_logfile):
+    fprintf(logfp, "#Time");
+    hdrs = mbslist.col_head_list()
+    for h in hdrs:
+        fprintf(logfp, " %s", h);
+    fprintf(logfp, " floattime")
+    fprintf(logfp, "\n")
+        
+tm = time.localtime()
+fprintf(logfp, "%02d:%02d", tm.tm_hour, tm.tm_min)
 for item in log_items:
     if(log_dict[item] is not None):
         fprintf(logfp, " %s", log_dict[item])
     else:
+        fprintf(logfp, "  NaN");
+fprintf(logfp, "\n");
+
+fprintf(logfp, "%02d:%02d", tm.tm_hour, tm.tm_min)
+for i in range(1, mbslist.maxcol+1):
+    s = mbslist.bycolumn[i]
+    if(s.last is not None):
+        fprintf(logfp, " %s", s.last)
+    else:
         fprintf(logfp, " NaN");
+fprintf(logfp, " %6.3f", tm.tm_hour+tm.tm_min/60)
 fprintf(logfp, "\n");
 logfp.flush()
 

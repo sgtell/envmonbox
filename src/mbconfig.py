@@ -16,6 +16,7 @@ class mbsensor_base:
         self.lasttime = 0
         self.forward = False
         self.ftag = '';
+        self.column = 0;
 
     @property
     def topic(self):
@@ -100,21 +101,37 @@ class mbslist:
         self.add( mbsensor("LR Countertop Temp",     10,  True, False, "temp_c", "indoor_tx2_temp",  float,   "rtl_433/fullcircle/devices/Thermopro-TX2C/1/238/temperature_C"));
 
         # not really sensors, but generated data somwhere in the pipeline
-        self.add( mbgen("Indoor LR Temp",         6,   False, True, "temp_fc", "room_temp_f",        "c_to_f", "room_temp_f"        ));  
-        self.add( mbgen("Outdoor/East 1820 Temp", 7,   False, True, "temp_fc", "outdoor_temp_f",     "c_to_f", "outdoor_temp_f"     ));  
-        self.add( mbgen("Indoor Bedroom Temp",    13,  False, True, "temp_fc", "bedroom_indoor3_f",  "c_to_f", "bedroom_indoor3_f"  ));  
-        self.add( mbgen("Outdoor Radio Temp",     9,   False, True, "temp_fc", "outdoor_tx2_temp_f", "c_to_f", "outdoor_tx2_temp_f" ));  
-        self.add( mbgen("LR Countertop Temp",     11,  False, True, "temp_fc", "indoor_tx2_temp_f",  "c_to_f", "indoor_tx2_temp_f"  ));  
+        self.add( mbgen("Indoor LR Temp",         6,   False, True, "temp_f", "room_temp_f",        "c_to_f", "room_temp"        ));  
+        self.add( mbgen("Outdoor/East 1820 Temp", 7,   False, True, "temp_f", "outdoor_temp_f",     "c_to_f", "outdoor_temp"     ));  
+        self.add( mbgen("Indoor Bedroom Temp",    13,  False, True, "temp_f", "bedroom_indoor3_f",  "c_to_f", "bedroom_indoor3"  ));  
+        self.add( mbgen("Outdoor Radio Temp",     9,   False, True, "temp_f", "outdoor_tx2_temp_f", "c_to_f", "outdoor_tx2_temp" ));  
+        self.add( mbgen("LR Countertop Temp",     11,  False, True, "temp_f", "indoor_tx2_temp_f",  "c_to_f", "indoor_tx2_temp"  ));  
 
     def setup_data(self):
         """set up quick-access dictionaries.  call this after init_static or other sensor config load"""
         self.bytopic = dict()
         self.bytag = dict()
+        self.bycolumn = dict()  # would like array, but need to write by index, and python arrays don't expand
+        self.maxcol = 0;
         for s in self.mblist:
             if(s.topic):
                 self.bytopic[ s.topic ] = s
             self.bytag[ s.ftag ] = s
+            self.bycolumn[ s.column ] = s;
+            if(s.column > self.maxcol):
+                self.maxcol = s.column
+            # TODO check that column numbers are contiguous
+            
+    def set_value(self, ftag, value):
+        if(ftag in self.bytag):
+            self.bytag[ftag].last = value
 
+    def col_head_list(self):
+        r = list();
+        for i in range(1, self.maxcol+1):
+            r.append( self.bycolumn[i].ftag)
+        return r;
+            
 if __name__ == "__main__":
     import sys
     import pprint
