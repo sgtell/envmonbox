@@ -5,12 +5,13 @@ import cgi
 import time
 import math
 
-sys.path.append('/home/tell/share/python')
+logdir="/home/envmonbox/log"
+idlist="/home/envmonbox/clientid-list"
+
+sys.path.append("/home/envmonbox/lib/python");
 from perlish import *
 import mbconfig
 
-logdir="/home/envmonbox/log"
-idlist="/home/envmonbox/clientid-list"
 
 global mbslist
 mbslist = mbconfig.mbslist()
