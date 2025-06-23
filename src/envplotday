@@ -17,6 +17,10 @@ my $gnuplotprog = "gnuplot";
 my $ploturlprefix = "envplotday";
 my $plot_title = "Fullcircle Temperatures";
 
+$gnuplot_png_cmd="set terminal png size 900,400\n";	# for gnuplot >= ~4.2
+#$gnuplot_png_cmd="set terminal png picsize 800 400\n";  # for old gnuplot ~4.0
+my $NAN= -sin(9**9**9);  # works on old perl, where "NAN" doesn't.
+
 my $header_index_hack = {};
 $header_index_hack->{indoor2} =  11;
 $header_index_hack->{outdoor2} =  9;
@@ -28,12 +32,7 @@ $header_index_hack->{indoor_humid} =  2;
 #	printf "$k %s\n", $header_index_hack->{$k};
 #}
 
-my $NAN= -sin(9**9**9);  # works on old perl, where "NAN" doesn't.
-#my $inf = 9**9**9;
-#my $neginf = -9**9**9;
-
-$gnuplot_png_cmd="set terminal png size 900,400\n";	# for gnuplot >= ~4.2
-#$gnuplot_png_cmd="set terminal png picsize 800 400\n";  # for old gnuplot ~4.0
+$now = time;
 
 sub usage {
 	print STDERR "$0 [options]\n";
@@ -41,71 +40,11 @@ sub usage {
 	print STDERR " -v   verbose\n";
 }
 
-#print Dumper $q;
-$now = time;
-if(defined($ENV{'QUERY_STRING'})) {  # we are a CGI script
-	$query = new CGI;
-	$ymdreq = $query->param('ymd');
-
-	$reqtime = ymd_to_time($ymdreq);
-
-	chdir($plotdir);
-} else {
-#	$halogdir = "";
-
-	my %optctl = ("D|debug!"   => \$debug,
-              "t|today!" => \$today,
-              "y|yesterday!" => \$yesterday,
-              "f|file!" => \$usefile,
-              "h|html!" => \$dohtml,
-              "v|verbose!" => \$verbose,
-             );
-
-	Getopt::Long::config('no_auto_abbrev',
-                     'no_ignore_case',
-		     'no_ignore_case_always');
-
-	if(!GetOptions(%optctl)) {
-		&usage();
-		exit 1;
-	}
-	if($today){
-		$reqtime = time;
-	} elsif($yesterday){
-		$now = time;
-		$reqtime = $now - 24*3600;
-	} elsif($usefile) {
-		$datestr = "($usefile)";
-		$fname = $usefile;
-	} elsif($#ARGV >= 0) {
-		$reqtime = ymd_to_time($ARGV[0]);
-	} else {
-		$reqtime = $now;
-
-
-	}
-}
-# at this point either fname and datestr are defined,
+get_args_or_cgi();
+# either fname and datestr are defined,
 # or we create them from $reqtime
 
-if(!$fname) { # use reqtime
-	$ymdstr = strftime "%y%m%d", localtime($reqtime);  # data log file name
-	$datestr = strftime "%B %d, %Y", localtime($reqtime);
-	$fname = "dlog.$dlogkey.$ymdstr";
-}
-
-$todaylink = sprintf "/cgi-bin/%s", $ploturlprefix;
-if(reqtime) {
-	$prev_day = $reqtime - 24*3600;
-	$prev_ymd = strftime "%y%m%d", localtime($prev_day);
-	$prevlink = sprintf "/cgi-bin/%s?ymd=%s", $ploturlprefix, $prev_ymd;
-
-	$next_day = $reqtime + 24*3600;
-	if($next_day < $now) {
-		$next_ymd = strftime "%y%m%d", localtime($next_day);
-		$nextlink = sprintf "/cgi-bin/%s?ymd=%s", $ploturlprefix, $next_ymd;
-	}
-}
+generate_links();
 
 $basename = $fname;
 $basename =~ s|^.*/||;
@@ -126,9 +65,14 @@ if($debug) {
 }
 
 # todo: check dates, only regenerate if needed.
-# todo: add form to select another day to view. (calendar)
 
-$lt = process_data("$halogdir$fname", $pfname);
+if($fname =~ m|^/|) {
+	$fullfname = $fname;
+} else {
+	$fullfname = "$halogdir$fname"
+}
+
+$lt = process_data($fname, $pfname);
 gen_gnuplot($gpname, $datestr, $pfname, $pngname, $lt, $plot_title);
 run_gnuplot($gpname);
 
@@ -139,6 +83,80 @@ if($query || $dohtml) {
 exit 0;
 
 #############################################################################
+
+sub fname_from_reqtime {
+	my($reqtime) = @_;
+
+	my $ymdstr = strftime "%y%m%d", localtime($reqtime);  # data log file name
+	my $datestr = strftime "%B %d, %Y", localtime($reqtime);
+	my $fname = "dlog.$dlogkey.$ymdstr";
+	return $fname;
+}
+
+sub generate_links {
+	$todaylink = sprintf "/cgi-bin/%s", $ploturlprefix;
+	if($reqtime) {
+		my $prev_day = $reqtime - 24*3600;
+		my $prev_ymd = strftime "%y%m%d", localtime($prev_day);
+		$prevlink = sprintf "/cgi-bin/%s?ymd=%s", $ploturlprefix, $prev_ymd;
+
+		my $next_day = $reqtime + 24*3600;
+		if($next_day < $now) {
+			$next_ymd = strftime "%y%m%d", localtime($next_day);
+			$nextlink = sprintf "/cgi-bin/%s?ymd=%s", $ploturlprefix, $next_ymd;
+		}
+	}
+	# note that code below might still expect them to be globals
+	return ($todaylink, $prevlink, $nextlink)
+}
+
+sub get_args_or_cgi {
+      if(defined($ENV{'QUERY_STRING'})) {  # we are a CGI script
+      	$query = new CGI;
+      	$ymdreq = $query->param('ymd');
+
+      	$reqtime = ymd_to_time($ymdreq);
+
+      	chdir($plotdir);
+      } else {
+      #	$halogdir = "";
+
+      	my %optctl = ("D|debug!"   => \$debug,
+                    "t|today!" => \$today,
+                    "y|yesterday!" => \$yesterday,
+                    "f|file=s" => \$usefile,
+                    "h|html!" => \$dohtml,
+                    "v|verbose!" => \$verbose,
+                   );
+
+      	Getopt::Long::config('no_auto_abbrev',
+                           'no_ignore_case',
+      		     'no_ignore_case_always');
+
+      	if(!GetOptions(%optctl)) {
+      		&usage();
+      		exit 1;
+      	}
+      	if($today){
+      		$reqtime = time;
+      	} elsif($yesterday){
+      		$now = time;
+      		$reqtime = $now - 24*3600;
+      	} elsif($usefile) {
+      		$datestr = "($usefile)";
+      		$fname = $usefile;
+      	} elsif($#ARGV >= 0) {
+      		$reqtime = ymd_to_time($ARGV[0]);
+      	} else {
+      		$reqtime = $now;
+      	}
+
+	printf("fname=$fname\n");
+    }
+      if(!$fname) {
+	      $fname = fname_from_reqtime($reqtime);
+      }
+}
 
 sub ymd_to_time {
 	my($ymdreq) = @_;
@@ -182,7 +200,7 @@ sub process_data {
 	}
 
 	line: while($line = $fp->getline()) {
-		if($line =~ m/^# (time.*$)/) {
+		if($line =~ m/^# (time.*$)/i ) {
 			@hdrs = split(/\s+/, $1);
 			$nhdrs = scalar(@hdrs);
 			print $ofp "\n";
@@ -269,8 +287,8 @@ printf $ofp "set output \"%s\"\n", $pngname;
 printf $ofp "plot \"$datfname\" using 1:2 title \"outdoor: %5.1f\" with lines, \\\n", $ltemp->{outdoor};
 printf $ofp " \"$datfname\" using 1:3  title \"indoor: %5.1f\" with lines, \\\n", $ltemp->{indoor};
 printf $ofp " \"$datfname\" using 1:4  title \"humidity %5.1f %%\" with lines, \\\n", $ltemp->{indoor_humid};
-printf $ofp " \"$datfname\" using 1:5  title \"ourdoor2 %5.1f %%\" with lines, \\\n", $ltemp->{outdoor2};
-printf $ofp " \"$datfname\" using 1:6  title \"indoor2 %5.1f %%\" with lines, \\\n", $ltemp->{indoor2};
+printf $ofp " \"$datfname\" using 1:5  title \"ourdoor2 %5.1f \" with lines, \\\n", $ltemp->{outdoor2};
+printf $ofp " \"$datfname\" using 1:6  title \"indoor2 %5.1f \" with lines, \\\n", $ltemp->{indoor2};
 #print $ofp "set output\n";
 	$ofp->close();
 }

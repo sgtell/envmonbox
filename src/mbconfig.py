@@ -5,6 +5,8 @@
 
 import sys
 import time
+import yaml
+
 sys.path.append('/home/tell/proj/python');
 from perlish import *
 
@@ -135,14 +137,26 @@ class mbslist:
 if __name__ == "__main__":
     import sys
     import pprint
+    import argparse
+
+    parser =  argparse.ArgumentParser(description="monbox-config and data store test/demo");
+    parser.add_argument("--verbose", "-v", default=False, action='store_true');
+    parser.add_argument("--quiet", "-q", default=False, action='store_true');
+    parser.add_argument("--yamlout", "-o", type=str, help="write config as yaml");
+    args = parser.parse_args();
+    
     mbl = mbslist()
     mbl.init_static()
     mbl.setup_data()
-    mbl.print()
-    pprint.pprint(mbl.__dict__)
-    for mbs in mbl.mblist:
-        printf(" %30s %12d %10s\n", mbs.ftag, mbs.lasttime, str(mbs.last))
-    
-    
+    if(args.verbose):
+        mbl.print()
+        pprint.pprint(mbl.__dict__)
+    if(not args.quiet):
+        for mbs in mbl.mblist:
+            printf(" %20s %25s %12d %10s %6s\n", mbs.ftag, mbs.fullname, mbs.lasttime, str(mbs.last), mbs.plot)
+
+    if(args.yamlout):
+        with open(args.yamlout, "w") as f:
+            yaml.dump(mbl.mblist, f);
     
 

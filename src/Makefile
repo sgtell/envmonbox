@@ -10,7 +10,9 @@ install:
 	mkdir -p 	 $(MONBOXBIN)
 	cp mb-gather 	 $(MONBOXBIN)
 	cp mb-forward 	 $(MONBOXBIN)
+	sudo cp mb-status $(CGIBIN)
 	mkdir -p   $(MONBOXPLIB)
 	cp sgtmqtt.py  $(MONBOXPLIB)
 	cp mbconfig.py  $(MONBOXPLIB)
-	sudo cp mb-status $(CGIBIN)
+	python mbconfig.py -q -o $(MONBOXPLIB)/mbconfig.yaml
+
