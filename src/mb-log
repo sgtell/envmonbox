@@ -1,0 +1,168 @@
+#!/usr/bin/python3
+#!/home/tell/venv/bin/python3
+# -*- coding: utf-8 -*-
+
+import time
+import subprocess
+import os
+import re
+import argparse
+import json
+import pprint
+# import mbconfig
+from mbconfig import *
+from perlish import *
+
+sys.path.append('/home/envmonbox/lib/python');
+import sgtmqtt
+
+mymq = None
+#minutes_per_update = 4
+minutes_per_update = 1
+seconds_per_update = 180
+old_data_threshold = 900
+messages_seen = 0
+tmnow = time.localtime() 
+last_send_minute = tmnow.tm_min
+last_send_time = time.time()
+fwid=1
+
+parser =  argparse.ArgumentParser(description="gather environment monitoring data, from mqtt, and log to file");
+parser.add_argument("--verbose", "-v", default=False, action='store_true');
+parser.add_argument("--config", "-c", dest='configfile', default=None);
+parser.add_argument("--host", dest="mqhost", type=str, help="mqtt hostname", default="localhost");
+args = parser.parse_args();
+g_verbose = args.verbose
+
+mymq = None
+
+baseurl = "http://titania.telltronics.org/cgi-bin/mb-cgi"
+latest_file = "/home/envmonbox/log/latest"
+
+global mbsdlist
+mbsdlist = mbslist()
+if(args.configfile):
+    mbsdlist.read_yaml(args.configfile)
+else:
+    print("--config FILE required\n");
+    exit(1);
+    mbsdlist.init_static()
+mbsdlist.setup_data()
+
+if(args.verbose):
+    printf("mblist:\n")
+    for s in mbsdlist.mblist:
+        pprint.pprint(s.__dict__)
+
+def on_connect(mq, userdata, flags, rc):
+    global mbsdlist
+    print("Connected with result code "+str(rc))
+    # Subscribing in on_connect() means that if we lose the connection and
+    # reconnect then subscriptions will be renewed.
+    if(mq):
+        for item in mbsdlist.mblist:
+            if(item.topic is not None):
+                if(g_verbose):
+                    printf("subscribe %s\n", item.topic);
+                mq.subscribe(item.topic)
+
+def on_message(msg):
+    global mbsdlist
+    global messages_seen
+    topic = str(msg.topic)
+    newvalstr = msg.payload.decode('ascii')
+
+    if(g_verbose):
+        printf("topic=%s: %s\n", topic,  newvalstr)
+
+    # accepted = mbsdlist.newdata(topic, newval)
+    accepted = False
+    if(topic in mbsdlist.bytopic):
+        accepted = True
+        messages_seen += 1
+        mbs = mbsdlist.bytopic[topic]
+        ttype = mbs.mtype
+        if(ttype == float): # or ttype == 'float'):
+            mbs.newval(float(newvalstr))
+        elif(ttype == str):
+            mbs.newval(newvalstr)
+        elif(ttype == int):
+            mbs.newval(int(s, 0))
+        elif(ttype == '18b20_json'):
+            data = json.loads( msg.payload.decode('ascii') );
+            tempstr = data['DS18B20']['Temperature'];
+            mbs.newval(float(tempstr))
+        else:
+            printf("unknown type %s for topic %s; treating as str\n", str(ttype), topic)
+            mbs.newval(newvalstr)
+
+    if(not accepted and g_verbose):
+        printf("ignoring unknown topic %s\n", topic)
+
+def fstr_or_nanstr(topic):
+    """return formatted string or the string 'Nan' if the last value is too old"""
+    # should this be an mbsensor method?
+    global mbsdlist
+    now = time.time()
+    mbs = mbsdlist.bytopic[topic]
+    lasttime = topicinfo[topic]['lasttime']
+    if(now - lasttime < old_data_threshold):
+        return sprintf("%s", str(topicinfo[topic]['last']))
+    else:
+        printf(" fstr_or %s too old now=%d lasttime=%d delta=%d\n", topic, now, lasttime, now - lasttime)
+        return "NaN"
+
+def log_headers():
+    """write headers for all of the columns"""
+    printf("log_HrMin");
+    for i in range(1, mbsdlist.maxcol+1):
+        s = mbsdlist.bycolumn[i]
+        printf(" %s", s.fullname);
+    printf("\n");
+    
+def log_latest():
+    """write current (latest) info to the logfile"""
+    global mbsdlist
+    tm = time.localtime()
+    #fprintf(logfp, "%02d:%02d", tm.tm_hour, tm.tm_min)
+    # rotate log daily
+    printf("log %02d:%02d ", tm.tm_hour, tm.tm_min)
+    for i in range(1, mbsdlist.maxcol+1):
+        s = mbsdlist.bycolumn[i]
+        vstr = s.str_if_not_old(old_data_threshold)
+        printf(" %s", vstr);
+    printf("\n");
+
+def computed_fields_mbslist(mbsdlist):
+    now = time.time()
+    for s in mbsdlist.mblist:
+        if(s.mbtype == 'mbgen'):
+            if(s.gsource in mbsdlist.bytag):
+                gsval = mbsdlist.bytag[ s.gsource ].last
+                if(gsval is not None):
+                    if(s.gfunc == "c_to_f"):
+                        gval = float(gsval) * 1.8 + 32;
+                        s.last = sprintf("%.1f", gval)
+                        s.lasttime = now
+
+def periodic():
+    global last_send_time
+    global messages_seen
+    global mbsdlist    
+    computed_fields_mbslist(mbsdlist)
+        
+    if(messages_seen > 0):
+        log_latest()
+        messages_seen = 0
+
+    
+def main():
+    global mymq
+    mymq = sgtmqtt.sgtmqtt(mqhost=args.mqhost)
+    mymq.mq.on_connect = on_connect
+    mymq.on_message = on_message
+    mymq.periodic_callback = periodic
+    log_headers()
+    mymq.select_loop(60)	# make this an option, or at least longer after we finish debugging
+
+main()

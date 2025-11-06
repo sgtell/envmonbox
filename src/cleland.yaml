@@ -1,0 +1,113 @@
+- !!python/object:__main__.mbsensor
+  column: 1
+  dtype: float
+  ftag: outdoor_temp_f
+  fullname: Outdoor
+  last: null
+  lasttime: 0
+  mbtype: mbsensor
+  mtype: float
+  mtopic: sgt485/outdoor/temperature
+  plot: true
+
+- !!python/object:__main__.mbsensor
+  column: 2
+  dtype: float
+  ftag: upstairs_temp_f
+  fullname: Bedroom
+  last: null
+  lasttime: 0
+  mbtype: mbsensor
+  mtype: float
+  mtopic: sgt485/bedroom/temperature
+  plot: true
+
+- !!python/object:__main__.mbsensor
+  column: 3
+  dtype: float
+  ftag: garage_temp_f
+  fullname: Garage
+  last: null
+  lasttime: 0
+  mbtype: mbsensor
+  mtype: float
+  mtopic: sgt485/garage/temperature
+  plot: true
+
+- !!python/object:__main__.mbsensor
+  column: 4
+  dtype: float
+  ftag: comcloset_temp_f
+  fullname: Comcloset
+  last: null
+  lasttime: 0
+  mbtype: mbsensor
+  mtype: float
+  mtopic: sgt485/comcloset/temperature
+  plot: true
+
+- !!python/object:__main__.mbsensor
+  column: 5
+  dtype: float
+  ftag: attic_temp_f
+  fullname: Attic
+  last: null
+  lasttime: 0
+  mbtype: mbsensor
+  mtype: float
+  mtopic: sgt485/attic/temperature
+  plot: true
+
+
+- !!python/object:__main__.mbsensor
+  column: 0
+  dtype: float
+  ftag: downstairs_temp
+  fullname: Downstairs
+  last: null
+  lasttime: 0
+  mbtype: mbsensor
+  mtype: 18b20_json
+  mtopic: tele/tasmota_DACAF2/SENSOR
+  plot: false
+
+- !!python/object:__main__.mbsensor
+  column: 0
+  dtype: float
+  ftag: freezer_temp
+  fullname: Freezer
+  last: null
+  lasttime: 0
+  mbtype: mbsensor
+  mtype: 18b20_json
+  mtopic: tele/tasmota_57C242/SENSOR
+  plot: false
+
+
+
+
+- !!python/object:__main__.mbgen
+  column: 6
+  dtype: float
+  ftag: downstairs_temp_f
+  fullname: Downstairs
+  last: null
+  lasttime: 0
+  mbtype: mbgen
+  gsource: downstairs_temp
+  gfunc: c_to_f
+  plot: True
+
+- !!python/object:__main__.mbgen
+  column: 7
+  dtype: float
+  ftag: freezer_temp_f
+  fullname: Freezer
+  last: null
+  lasttime: 0
+  mbtype: mbgen
+  gsource: freezer_temp
+  gfunc: c_to_f
+  plot: True
+
+
