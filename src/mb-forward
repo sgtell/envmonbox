@@ -209,6 +209,7 @@ def periodic():
     global last_send_time
     global messages_seen
     now = time.time()
+    computed_fields_mbslist(mbsdlist)
     if(now - last_send_time > seconds_per_update):
         forward_web()
         last_send_time = now
@@ -222,6 +223,17 @@ def nomq_callback():
     if(g_verbose):
         print_current()
     pass
+
+def computed_fields_mbslist(mbsdlist):
+    for s in mbsdlist.mblist:
+        if(s.mbtype == 'mbgen'):
+            if(s.gsource in mbsdlist.bytag):
+                gsval = mbsdlist.bytag[ s.gsource ].last
+                if(gsval is not None):
+                    if(s.gfunc == "c_to_f"):
+                        gval = float(gsval) * 1.8 + 32;
+                        s.last = sprintf("%.1f", gval)
+                        s.lasttime = time.time()
 
 def main():
     global mymq

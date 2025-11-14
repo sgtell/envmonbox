@@ -25,18 +25,6 @@
 - !!python/object:__main__.mbsensor
   column: 3
   dtype: float
-  ftag: garage_temp_f
-  fullname: Garage
-  last: null
-  lasttime: 0
-  mbtype: mbsensor
-  mtype: float
-  mtopic: sgt485/garage/temperature
-  plot: true
-
-- !!python/object:__main__.mbsensor
-  column: 4
-  dtype: float
   ftag: comcloset_temp_f
   fullname: Comcloset
   last: null
@@ -44,6 +32,18 @@
   mbtype: mbsensor
   mtype: float
   mtopic: sgt485/comcloset/temperature
+  plot: true
+
+- !!python/object:__main__.mbsensor
+  column: 4
+  dtype: float
+  ftag: garage_temp_f
+  fullname: Garage
+  last: null
+  lasttime: 0
+  mbtype: mbsensor
+  mtype: float
+  mtopic: sgt485/garage-temp/temperature
   plot: true
 
 - !!python/object:__main__.mbsensor
