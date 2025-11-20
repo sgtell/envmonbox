@@ -145,32 +145,13 @@ def log_latest():
         printf("\n");
     mylog.write_data(logfields)
 
-# # shouldn't some of this be in the mbgen class?    
-# def computed_fields_mbslist(mbsdlist):
-#     now = time.time()
-#     for s in mbsdlist.mblist:
-#         if(s.mbtype == 'mbgen'):
-#             if(s.gsource in mbsdlist.bytag):
-#                 gsval = mbsdlist.bytag[ s.gsource ].last
-#                 if(gsval is not None):
-#                     if(s.gfunc == "c_to_f"):
-#                         v = float(gsval)
-#                         printf("compute %s: source %s is %s\n", s.ftag, s.gsource, str(gsval))
-#                         if(v == math.nan):
-#                             gsval = nan
-#                         else:
-#                             gval = v * 1.8 + 32;
-#                         s.last = gval
-#                         s.lasttime = now
-#             else:
-#                 printf("compute %s: source %s not found\n", s.ftag, s.gsource)
-
-                
+    
 def periodic():
     global last_send_time
     global messages_seen
     global mbsdlist
     global mylog
+    mylog.check_reopen()
     mbsdlist.update()
     #computed_fields_mbslist(mbsdlist)
     if(messages_seen > 0):
