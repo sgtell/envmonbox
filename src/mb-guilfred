@@ -16,6 +16,7 @@ import pprint
 from mbconfig import *
 import mbutils
 from perlish import *
+from os import *
 
 sys.path.append('/home/envmonbox/lib/python');
 import sgtmqtt
@@ -34,6 +35,7 @@ fwid=1
 parser =  argparse.ArgumentParser(description="gather environment monitoring data, from mqtt, and log to file");
 parser.add_argument("--verbose", "-v", default=False, action='store_true');
 parser.add_argument("--config", "-c", dest='configfile', default=None);
+parser.add_argument("--norun", "-n", default=False, action='store_true');
 parser.add_argument("--host", dest="mqhost", type=str, help="mqtt hostname", default="localhost");
 args = parser.parse_args();
 g_verbose = args.verbose
@@ -42,10 +44,11 @@ mqhost=args.mqhost
 mymq = None
 mylog = None
 
-
 def guilfred_send_temp(tag, temp):
-    cmd = sprintf("gfexec '(nd-new-temp %s %.1f)')", tag, temp );
+    cmd = sprintf("bin/gfexec '(nd-new-temp %s %.1f)'", tag, temp );
     printf("send_guilfred: %s\n", cmd);
+    if(not args.norun):
+        system(cmd)
 
 topics = [
     # mqtt topic 	            type        # forwarding/logging tag
@@ -152,6 +155,7 @@ def print_current():
 def main():
     global mymq
     global fwid
+    chdir("/home/ha")
     init_topicinfo()
     mymq = sgtmqtt.sgtmqtt(mqhost=mqhost)
     mymq.on_message = on_message
