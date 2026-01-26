@@ -45,7 +45,7 @@ mymq = None
 mylog = None
 
 def guilfred_send_temp(tag, temp):
-    cmd = sprintf("bin/gfexec '(nd-new-temp %s %.1f)'", tag, temp );
+    cmd = sprintf("bin/gfexec '(nd-new-temp! %s %.1f)'", tag, temp );
     printf("send_guilfred: %s\n", cmd);
     if(not args.norun):
         system(cmd)
