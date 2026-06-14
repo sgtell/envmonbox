@@ -1,0 +1,22 @@
+[Unit]
+Description=daemon to forward environment-monitor data to guilfred home automation
+After=mosquitto.service guilfred.service
+Requires=mosquitto.service
+
+[Service]
+Type=simple
+User=envmonbox
+WorkingDirectory=/home/envmonbox
+ExecStart=/home/envmonbox/bin/mb-guilfred
+ExecStartPre=mkdir -m 755 -p /home/envmonbox/log
+#ExecStartPre=chown envmonbox /home/envmonbox/log
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mbguilfred
+
+Restart=always
+RestartSec=15s
+
+[Install]
+WantedBy=multi-user.target
+

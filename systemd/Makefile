@@ -9,4 +9,5 @@ install:
 	sudo cp lcdstats.service $(SVCDIR)
 	sudo cp mb-gather.service $(SVCDIR)
 	sudo cp mb-forward.service $(SVCDIR)
+	sudo cp mb-guilfred.service $(SVCDIR)
 	sudo cp rtl_433.service $(SVCDIR)
