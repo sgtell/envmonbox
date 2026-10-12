@@ -163,25 +163,25 @@ class mbslist:
     def init_static(self):
         """initialize with static or test data"""
         #                  fullname,                 rcol, fwd? plot? datatype, ftag,            mqtt_type, mqtt_topic
-        self.add( mbsensor("CPU Load",               1,   True, False, "float",  "cpu_load",     float,      "monbox/cpu_load") );
-        self.add( mbsensor("CPU Temp",               2,   True, False, "temp_c", "cpu_temp",     float,      "monbox/cpu_temp") );
-        self.add( mbsensor("Indoor LR Temp",         3,   True, False, "temp_c", "room_temp",     float,      "monbox/room_temp") );
-        self.add( mbsensor("Indoor LR Humidity",     4,   True, True,  "rh",     "room_humidity", float,      "monbox/room_humidity") );
+#        self.add( mbsensor("CPU Load",               1,   True, False, "float",  "cpu_load",     float,      "monbox/cpu_load") );
+#        self.add( mbsensor("CPU Temp",               2,   True, False, "temp_c", "cpu_temp",     float,      "monbox/cpu_temp") );
+ #       self.add( mbsensor("Indoor LR Temp",         3,   True, False, "temp_c", "room_temp",     float,      "monbox/room_temp") );
+#        self.add( mbsensor("Indoor LR Humidity",     4,   True, True,  "rh",     "room_humidity", float,      "monbox/room_humidity") );
         self.add( mbsensor("Outdoor/East 1820 Temp", 5,   True, False, "temp_c", "outdoor_temp",  "18b20_json", "tele/tasmota_88E4AB/SENSOR") );
         self.add( mbsensor("Indoor Bedroom Temp",    12,  True, False, "temp_c", "bedroom_indoor3", "18b20_json", "tele/tasmota_F99C40/SENSOR"));
-        self.add( mbsensor("Outdoor Radio Temp",     8,   True, False, "temp_c", "outdoor_tx2_temp", float,   "rtl_433/fullcircle/devices/Thermopro-TX2C/2/250/temperature_C"));
-        self.add( mbsensor("LR Countertop Temp",     10,  True, False, "temp_c", "indoor_tx2_temp",  float,   "rtl_433/fullcircle/devices/Thermopro-TX2C/1/238/temperature_C"));
+ #       self.add( mbsensor("Outdoor Radio Temp",     8,   True, False, "temp_c", "outdoor_tx2_temp", float,   "rtl_433/fullcircle/devices/Thermopro-TX2C/2/250/temperature_C"));
+  #      self.add( mbsensor("LR Countertop Temp",     10,  True, False, "temp_c", "indoor_tx2_temp",  float,   "rtl_433/fullcircle/devices/Thermopro-TX2C/1/238/temperature_C"));
 
         # not really sensors, but generated data somwhere in the pipeline
-        self.add( mbgen("Indoor LR Temp",         6,   False, True, "temp_f", "room_temp_f",        "c_to_f", "room_temp"        ));  
+#        self.add( mbgen("Indoor LR Temp",         6,   False, True, "temp_f", "room_temp_f",        "c_to_f", "room_temp"        ));  
         self.add( mbgen("Outdoor/East 1820 Temp", 7,   False, True, "temp_f", "outdoor_temp_f",     "c_to_f", "outdoor_temp"     ));  
         self.add( mbgen("Indoor Bedroom Temp",    13,  False, True, "temp_f", "bedroom_indoor3_f",  "c_to_f", "bedroom_indoor3"  ));  
-        self.add( mbgen("Outdoor Radio Temp",     9,   False, True, "temp_f", "outdoor_tx2_temp_f", "c_to_f", "outdoor_tx2_temp" ));  
-        self.add( mbgen("LR Countertop Temp",     11,  False, True, "temp_f", "indoor_tx2_temp_f",  "c_to_f", "indoor_tx2_temp"  ));  
+#        self.add( mbgen("Outdoor Radio Temp",     9,   False, True, "temp_f", "outdoor_tx2_temp_f", "c_to_f", "outdoor_tx2_temp" ));  
+#        self.add( mbgen("LR Countertop Temp",     11,  False, True, "temp_f", "indoor_tx2_temp_f",  "c_to_f", "indoor_tx2_temp"  ));  
 
 
     def init_static_test(self):
-        self.add( mbsensor("Indoor test Temp",         1,   True, False, "temp_f", "room_temp",     float,      "monbox/room_temp") );
+#        self.add( mbsensor("Indoor test Temp",         1,   True, False, "temp_f", "room_temp",     float,      "monbox/room_temp") );
         self.add( mbsensor("Test 1820 Temp", 2,   True, False, "temp_c", "outdoor_temp",  "18b20_json", "tele/tasmota_88E4AB/SENSOR") );
         self.add( mbgen("Test 1820 Temp", 3,   False, True, "temp_f", "outdoor_temp_f",     "c_to_f", "outdoor_temp"     ));  
 

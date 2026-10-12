@@ -19,5 +19,6 @@ install-lib:
 	mkdir -p   $(MONBOXPLIB)
 	cp sgtmqtt.py  $(MONBOXPLIB)
 	cp mbconfig.py  $(MONBOXPLIB)
+	cp perlish.py  $(MONBOXPLIB)
 	python mbconfig.py -q -o $(MONBOXPLIB)/mbconfig.yaml
 

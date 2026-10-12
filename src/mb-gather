@@ -4,13 +4,13 @@
 import time
 import subprocess
 import os
+import sys
 import re
 import argparse
-from perlish import *
 
 sys.path.append('/home/envmonbox/lib/python');
+from perlish import *
 import sgtmqtt
-
 
 mqhost="localhost"
 
@@ -84,14 +84,18 @@ def periodic():
         printf("IP=%s\n", IP);
         printf("CPU_Load=%.2f\n", CPU);
         printf("CPU_Temp=%.1f\n", cputemp);
-        printf("room_Temp=%.1f\n", temp);
-        printf("room_humidity=%.1f\n", hum);
+        if(temp is not None):
+            printf("room_Temp=%.1f\n", temp);
+        if(hum is not None):
+            printf("room_humidity=%.1f\n", hum);
 
     mymq.mq.publish("monbox/host_ip", IP);
     mymq.mq.publish("monbox/cpu_load", CPU);
     mymq.mq.publish("monbox/cpu_temp", sprintf("%.1f", cputemp))
-    mymq.mq.publish("monbox/room_temp", sprintf("%.1f", temp))
-    mymq.mq.publish("monbox/room_humidity", sprintf("%.1f", hum))
+    if(temp is not None):
+        mymq.mq.publish("monbox/room_temp", sprintf("%.1f", temp))
+    if(hum is not None):
+        mymq.mq.publish("monbox/room_humidity", sprintf("%.1f", hum))
     
 def main():
     global mymq

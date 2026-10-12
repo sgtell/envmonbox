@@ -12,10 +12,13 @@ import subprocess
 import digitalio
 import board
 import os
+import sys
 import re
 import argparse
 from PIL import Image, ImageDraw, ImageFont
 from adafruit_rgb_display import st7789
+
+sys.path.append('/home/envmonbox/lib/python');
 from perlish import *
 
 latest_file = "/home/envmonbox/log/latest"
@@ -120,23 +123,26 @@ def numfield(s):
                 return float(s)
 
 def get_latest():
-    fp = open(latest_file, "r")
-    valdict = dict()
-    exdict = dict()
-    for s in fp:
-        s = chomp(s) # todo remove all whitespace, not just last trailing
-        m = re.search("\s+([a-zA-Z0-9_]+):\s*([-A-Za-z.0-9]+)(.*)$", s)
-        if(m):
-            logtag = m.group(1)
-            valstr = m.group(2)
-            extra = m.group(3)
-            valdict[logtag] = valstr;
-            exdict[logtag] = extra;
-    fp.close()
-    if('outdoor_temp' in valdict):
-        tf = numfield(valdict['outdoor_temp'])
-        valdict['outdoor_temp_f'] = tf * 1.8 + 32.0
-    return valdict
+    try:
+        fp = open(latest_file, "r")
+        valdict = dict()
+        exdict = dict()
+        for s in fp:
+            s = chomp(s) # todo remove all whitespace, not just last trailing
+            m = re.search("\s+([a-zA-Z0-9_]+):\s*([-A-Za-z.0-9]+)(.*)$", s)
+            if(m):
+                logtag = m.group(1)
+                valstr = m.group(2)
+                extra = m.group(3)
+                valdict[logtag] = valstr;
+                exdict[logtag] = extra;
+        fp.close()
+        if('outdoor_temp' in valdict):
+            tf = numfield(valdict['outdoor_temp'])
+            valdict['outdoor_temp_f'] = tf * 1.8 + 32.0
+        return valdict
+    except FileNotFoundError:
+        return dict()
 
 # Create blank image for drawing.
 # Make sure to create image with mode 'RGB' for full color.
@@ -216,8 +222,12 @@ def draw_stats():
     cpustr = sprintf("CPU t=%2.1f L=%.1f", cputemp, cpuload)
     timestr = get_time()
     (temp, hum) = get_temp_hum()
-    tempf = temp * 1.8 + 32
-    thstr   = sprintf("room    %2.0fF  %2.0f%% rh", tempf, hum)
+    if(temp is not None and hum is not None):
+        tempf = temp * 1.8 + 32
+        thstr   = sprintf("room    %2.0fF  %2.0f%% rh", tempf, hum)
+    else:
+        thstr   = "--"
+        
     vals = get_latest()
 #    printf("vals=%s\n", str(vals))
     if('outdoor_temp_f' in vals and (not math.isnan(vals['outdoor_temp_f']))):

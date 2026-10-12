@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 #!/home/tell/venv/bin/python3
 # -*- coding: utf-8 -*-
 
@@ -5,13 +6,15 @@ import time
 import argparse
 import subprocess
 import os
+import sys
 import re
 import requests
 import json
 
+sys.path.append('/home/envmonbox/lib/python');
+
 from perlish import *
 
-sys.path.append('/home/envmonbox/lib/python');
 import sgtmqtt
 import mbconfig
 
@@ -209,7 +212,7 @@ def periodic():
     global last_send_time
     global messages_seen
     now = time.time()
-    computed_fields_mbslist(mbsdlist)
+    computed_fields_mbslist(mbslist)
     if(now - last_send_time > seconds_per_update):
         forward_web()
         last_send_time = now
